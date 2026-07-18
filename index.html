@@ -1,1507 +1,613 @@
 <!DOCTYPE html>
-<html lang="th" class="h-full">
+<html lang="th">
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <title>AR Respiratory Mission - ภารกิจพิชิตระบบหายใจ</title>
-    <!-- Tailwind CSS for Responsive Premium Styling -->
+    <title>สื่อมัลติมีเดียพัฒนาทักษะการอ่าน</title>
+    
+    <script src="https://unpkg.com/react@18/umd/react.production.min.js" crossorigin></script>
+    <script src="https://unpkg.com/react-dom@18/umd/react-dom.production.min.js" crossorigin></script>
+    <script src="https://unpkg.com/@babel/standalone/babel.min.js"></script>
     <script src="https://cdn.tailwindcss.com"></script>
-    <!-- FontAwesome Icons -->
-    <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.4.0/css/all.min.css">
-    <!-- Google Fonts: Sarabun & Inter -->
-    <link href="https://fonts.googleapis.com/css2?family=Inter:wght@300;400;600;800&family=Sarabun:wght@300;400;600;800&display=swap" rel="stylesheet">
-    
-    <!-- MediaPipe Hands & Camera Utils -->
-    <script src="https://cdn.jsdelivr.net/npm/@mediapipe/camera_utils/camera_utils.js" crossorigin="anonymous"></script>
-    <script src="https://cdn.jsdelivr.net/npm/@mediapipe/hands/hands.js" crossorigin="anonymous"></script>
-    <script src="https://cdn.jsdelivr.net/npm/@mediapipe/drawing_utils/drawing_utils.js" crossorigin="anonymous"></script>
-    
-    <!-- Three.js (3D Graphics Library) -->
-    <script src="https://cdnjs.cloudflare.com/ajax/libs/three.js/r128/three.min.js"></script>
-
-    <script>
-        tailwind.config = {
-            theme: {
-                extend: {
-                    fontFamily: {
-                        sans: ['Sarabun', 'Inter', 'sans-serif'],
-                    },
-                    colors: {
-                        crimson: {
-                            50: '#fff1f2',
-                            100: '#ffe4e6',
-                            500: '#f43f5e',
-                            600: '#e11d48',
-                            800: '#9f1239',
-                            950: '#4c0519',
-                        }
-                    }
-                }
-            }
-        }
-    </script>
 
     <style>
-        body {
-            font-family: 'Sarabun', 'Inter', sans-serif;
-            background: radial-gradient(circle at center, #1c050e 0%, #0c0205 100%);
-            color: #f3f4f6;
-            overflow-x: hidden;
+        body { margin: 0; padding: 0; background-color: #000; font-family: 'Segoe UI', Tahoma, Geneva, Verdana, sans-serif; }
+        @keyframes pop-in {
+            0% { transform: scale(0.8); opacity: 0; }
+            100% { transform: scale(1); opacity: 1; }
         }
-
-        /* Sci-Fi HUD Glow Effects */
-        .hud-glow {
-            box-shadow: 0 0 20px rgba(225, 29, 72, 0.25);
-            border: 1px solid rgba(225, 29, 72, 0.4);
-            backdrop-filter: blur(12px);
+        @keyframes scale-in {
+            0% { transform: scale(0.5); opacity: 0; }
+            100% { transform: scale(1); opacity: 1; }
         }
-
-        .hud-glow-cyan {
-            box-shadow: 0 0 20px rgba(6, 182, 212, 0.25);
-            border: 1px solid rgba(6, 182, 212, 0.4);
-            backdrop-filter: blur(12px);
-        }
-
-        /* Card Animations & Interactive effects */
-        .card-pulse:hover {
-            transform: translateY(-4px) scale(1.02);
-            box-shadow: 0 10px 25px -5px rgba(225, 29, 72, 0.4);
-        }
-
-        @keyframes cardShake {
-            0%, 100% { transform: translateX(0); }
-            20%, 60% { transform: translateX(-8px); }
-            40%, 80% { transform: translateX(8px); }
-        }
-
-        .shake-animation {
-            animation: cardShake 0.4s ease-in-out;
-        }
-
-        /* Progress ring styling */
-        .progress-ring__circle {
-            transition: stroke-dashoffset 0.1s;
-            transform: rotate(-90deg);
-            transform-origin: 50% 50%;
-        }
-
-        /* Mirrored webcam display */
-        .mirror {
-            transform: scaleX(-1);
-        }
-
-        /* Ambient floating oxygen particles in background */
-        .bg-particles {
-            position: fixed;
-            top: 0;
-            left: 0;
-            width: 100%;
-            height: 100%;
-            pointer-events: none;
-            z-index: 0;
-        }
+        .animate-pop-in { animation: pop-in 0.2s ease-out; }
+        .animate-scale-in { animation: scale-in 0.5s ease-out; }
     </style>
 </head>
-<body class="h-full relative overflow-hidden select-none">
-    
-    <!-- Ambient Floating Background Particles -->
-    <canvas id="bg-particles-canvas" class="bg-particles"></canvas>
-
-    <!-- STEAMING_CHUNK: App container... -->
-    <div class="relative z-10 flex flex-col h-full">
-        <!-- Top Navigation Header -->
-        <header class="w-full bg-slate-900/80 backdrop-blur-md border-b border-rose-950/50 p-4 flex justify-between items-center z-20">
-            <div class="flex items-center space-x-3">
-                <div class="bg-gradient-to-tr from-rose-600 to-crimson-500 p-2 rounded-xl text-white shadow-lg shadow-rose-600/30">
-                    <i class="fa-solid fa-lungs text-2xl animate-pulse"></i>
-                </div>
-                <div>
-                    <h1 class="text-xl font-extrabold text-transparent bg-clip-text bg-gradient-to-r from-rose-400 to-red-100 leading-tight">
-                        AR Respiratory Mission
-                    </h1>
-                    <p class="text-xs text-rose-300 font-semibold tracking-wider">ภารกิจพิชิตระบบหายใจ (ว1.2 ม.2/2 - ม.2/3)</p>
-                </div>
-            </div>
-
-            <!-- Stats Bar -->
-            <div class="flex items-center space-x-6">
-                <!-- Score Container -->
-                <div class="text-right">
-                    <span class="text-xs text-rose-400 block font-bold uppercase tracking-wider">SCORE</span>
-                    <span id="display-score" class="text-2xl font-black text-rose-100 tracking-wider">0000</span>
-                </div>
-                <!-- Combo Multiplier -->
-                <div id="combo-container" class="opacity-0 transition-opacity duration-300 flex items-center bg-rose-950/60 border border-rose-700 px-3 py-1 rounded-full space-x-1">
-                    <span class="text-xs text-red-300 font-bold">COMBO</span>
-                    <span id="display-combo" class="text-lg font-black text-red-400">X1</span>
-                </div>
-                <!-- Timer Gauge -->
-                <div class="flex items-center space-x-2 bg-slate-950/60 px-4 py-2 rounded-xl border border-rose-950/50">
-                    <i class="fa-solid fa-hourglass-half text-rose-400 animate-spin" style="animation-duration: 4s;"></i>
-                    <span id="display-timer" class="text-xl font-bold font-mono text-white">02:00</span>
-                </div>
-            </div>
-        </header>
-
-        <!-- Main Workspace Area -->
-        <main class="flex-1 grid grid-cols-1 lg:grid-cols-12 gap-4 p-4 overflow-hidden relative">
-            
-            <!-- Left Panel: Webcam, Finger gesture & AR HUD (5 Cols) -->
-            <section class="lg:col-span-5 flex flex-col space-y-3 h-full">
-                <!-- AR View container -->
-                <div class="flex-1 relative rounded-2xl overflow-hidden border border-rose-950/50 bg-black/40 shadow-inner flex flex-col justify-end">
-                    
-                    <!-- WebCam Video (Hidden by default, used as texture or overlaid) -->
-                    <video id="webcam-video" class="absolute inset-0 w-full h-full object-cover mirror pointer-events-none" autoplay playsinline></video>
-                    
-                    <!-- MediaPipe Hands skeleton render canvas -->
-                    <canvas id="webcam-canvas" class="absolute inset-0 w-full h-full object-cover mirror pointer-events-none"></canvas>
-
-                    <!-- Three.js Canvas: 3D AR Lungs System Layer -->
-                    <canvas id="three-canvas" class="absolute inset-0 w-full h-full object-cover pointer-events-none"></canvas>
-
-                    <!-- AR System overlay frames -->
-                    <div class="absolute inset-0 border-[12px] border-rose-950/25 pointer-events-none rounded-2xl"></div>
-                    <div class="absolute top-4 left-4 flex space-x-2">
-                        <span class="bg-red-600/90 text-[10px] text-white font-bold px-2 py-1 rounded tracking-widest uppercase flex items-center space-x-1 shadow-lg">
-                            <span class="h-2 w-2 bg-white rounded-full animate-ping"></span>
-                            <span>AR FEED LIVE</span>
-                        </span>
-                        <span id="camera-status" class="bg-slate-900/90 text-[10px] text-rose-300 font-bold px-2 py-1 rounded tracking-wide border border-rose-950">
-                            กล้อง: กำลังเชื่อมต่อ...
-                        </span>
-                    </div>
-
-                    <!-- HUD Center crosshair / gesture tracker -->
-                    <div class="absolute inset-x-0 bottom-6 flex flex-col items-center justify-center pointer-events-none">
-                        <!-- Selection Ring Progress -->
-                        <div class="relative bg-slate-950/80 px-5 py-3 rounded-2xl border border-rose-950/50 flex flex-col items-center shadow-2xl backdrop-blur-md">
-                            <div class="flex items-center space-x-3">
-                                <!-- Gesture state circular bar -->
-                                <div class="relative w-12 h-12">
-                                    <svg class="w-full h-full">
-                                        <circle class="text-rose-950/40" stroke-width="4" stroke="currentColor" fill="transparent" r="20" cx="24" cy="24"/>
-                                        <circle id="gesture-hud-circle" class="text-rose-500 progress-ring__circle" stroke-width="4" stroke-dasharray="125.6" stroke-dashoffset="125.6" stroke-linecap="round" stroke="currentColor" fill="transparent" r="20" cx="24" cy="24"/>
-                                    </svg>
-                                    <div class="absolute inset-0 flex items-center justify-center">
-                                        <span id="hud-finger-count" class="text-lg font-black text-white">0</span>
-                                    </div>
-                                </div>
-                                <div class="text-left">
-                                    <span class="text-[10px] text-rose-400 block font-bold tracking-wider">GESTURE LOCK-ON</span>
-                                    <span id="hud-status-text" class="text-xs text-white font-semibold">กรุณาชูมือหน้ากล้อง (1, 2, 3 นิ้ว)</span>
-                                </div>
-                            </div>
-                        </div>
-                    </div>
-                </div>
-
-                <!-- Gestures Cheat Sheet -->
-                <div class="bg-slate-950/75 border border-rose-950/40 p-3 rounded-2xl flex justify-between items-center text-xs text-slate-300 backdrop-blur-md shadow-lg">
-                    <span class="font-bold text-rose-400"><i class="fa-solid fa-hand-pointer mr-1"></i> ควบคุมผ่าน AR:</span>
-                    <div class="flex space-x-4">
-                        <span class="flex items-center"><span class="w-5 h-5 bg-rose-950 text-rose-400 border border-rose-700/50 rounded-full flex items-center justify-center font-bold mr-1 text-[10px]">1</span> ชู 1 นิ้ว (ชี้) = เลือกข้อ 1</span>
-                        <span class="flex items-center"><span class="w-5 h-5 bg-rose-950 text-rose-400 border border-rose-700/50 rounded-full flex items-center justify-center font-bold mr-1 text-[10px]">2</span> ชู 2 นิ้ว (สู้ๆ) = เลือกข้อ 2</span>
-                        <span class="flex items-center"><span class="w-5 h-5 bg-rose-950 text-rose-400 border border-rose-700/50 rounded-full flex items-center justify-center font-bold mr-1 text-[10px]">3</span> ชู 3 นิ้ว = เลือกข้อ 3</span>
-                    </div>
-                </div>
-            </section>
-
-            <!-- Right Panel: Questions, Timeline & Manual Controller (7 Cols) -->
-            <section class="lg:col-span-7 flex flex-col space-y-4 h-full overflow-y-auto">
-                
-                <!-- Main Question Hub Box -->
-                <div class="bg-gradient-to-b from-slate-900 to-slate-950/90 rounded-2xl p-6 border border-rose-950/50 shadow-2xl relative overflow-hidden flex flex-col justify-between flex-1">
-                    
-                    <!-- Decorative Background element -->
-                    <div class="absolute -right-16 -top-16 text-[150px] opacity-5 font-black pointer-events-none select-none text-rose-400"><i class="fa-solid fa-circle-nodes"></i></div>
-
-                    <!-- Progress Header -->
-                    <div class="flex justify-between items-center mb-4 border-b border-rose-950/30 pb-3">
-                        <span class="text-xs font-bold text-rose-400 tracking-wider uppercase">
-                            MISSION: <span id="current-stage-num">01</span> / 20
-                        </span>
-                        <div class="w-48 bg-slate-900 rounded-full h-2 overflow-hidden border border-rose-950/30">
-                            <div id="mission-progress-bar" class="bg-gradient-to-r from-rose-600 to-crimson-500 h-full rounded-full transition-all duration-300" style="width: 5%"></div>
-                        </div>
-                    </div>
-
-                    <!-- Question Text description -->
-                    <div class="mb-5">
-                        <span id="question-category" class="bg-rose-950/80 text-rose-300 text-[10px] font-bold px-2 py-1 rounded border border-rose-800 tracking-wide uppercase">
-                            กลไกการหายใจเข้า
-                        </span>
-                        <h2 id="question-text" class="text-lg font-bold text-white mt-2 leading-relaxed">
-                            เรียงลำดับกระบวนการหายใจเข้าของร่างกายให้ถูกต้องตามธรรมชาติ
-                        </h2>
-                        <p class="text-xs text-rose-300 mt-1"><i class="fa-solid fa-circle-question mr-1"></i>จงชูนิ้วค้าง 1 วินาที หรือคลิกเลือกการ์ดคำตอบเพื่อเรียงใส่ไทม์ไลน์ด้านล่าง</p>
-                    </div>
-
-                    <!-- Answer Options: Shuffled Cards Floating layout -->
-                    <div class="grid grid-cols-1 md:grid-cols-3 gap-3 mb-6" id="options-grid">
-                        <!-- Option Card 1 -->
-                        <button onclick="manualSelect(1)" class="card-pulse border border-rose-950 bg-slate-950/60 p-4 rounded-xl text-left hover:bg-rose-950/30 transition-all duration-200 cursor-pointer relative group flex flex-col justify-between min-h-[120px]">
-                            <div class="absolute top-2 right-2 bg-rose-950 text-rose-300 border border-rose-700 w-6 h-6 rounded-full flex items-center justify-center text-xs font-extrabold group-hover:bg-rose-600 group-hover:text-white group-hover:border-rose-400 transition-colors duration-200">1</div>
-                            <p class="text-xs text-rose-400 font-bold mb-1 uppercase tracking-wider">ตัวเลือกที่ 1</p>
-                            <p class="text-sm font-semibold text-rose-100 leading-normal mb-2">กล้ามเนื้อกะบังลมหดตัวและเลื่อนต่ำลง</p>
-                        </button>
-
-                        <!-- Option Card 2 -->
-                        <button onclick="manualSelect(2)" class="card-pulse border border-rose-950 bg-slate-950/60 p-4 rounded-xl text-left hover:bg-rose-950/30 transition-all duration-200 cursor-pointer relative group flex flex-col justify-between min-h-[120px]">
-                            <div class="absolute top-2 right-2 bg-rose-950 text-rose-300 border border-rose-700 w-6 h-6 rounded-full flex items-center justify-center text-xs font-extrabold group-hover:bg-rose-600 group-hover:text-white group-hover:border-rose-400 transition-colors duration-200">2</div>
-                            <p class="text-xs text-rose-400 font-bold mb-1 uppercase tracking-wider">ตัวเลือกที่ 2</p>
-                            <p class="text-sm font-semibold text-rose-100 leading-normal mb-2">กระดูกซี่โครงเคลื่อนตัวสูงขึ้นและปริมาตรช่องอกเพิ่มขึ้น</p>
-                        </button>
-
-                        <!-- Option Card 3 -->
-                        <button onclick="manualSelect(3)" class="card-pulse border border-rose-950 bg-slate-950/60 p-4 rounded-xl text-left hover:bg-rose-950/30 transition-all duration-200 cursor-pointer relative group flex flex-col justify-between min-h-[120px]">
-                            <div class="absolute top-2 right-2 bg-rose-950 text-rose-300 border border-rose-700 w-6 h-6 rounded-full flex items-center justify-center text-xs font-extrabold group-hover:bg-rose-600 group-hover:text-white group-hover:border-rose-400 transition-colors duration-200">3</div>
-                            <p class="text-xs text-rose-400 font-bold mb-1 uppercase tracking-wider">ตัวเลือกที่ 3</p>
-                            <p class="text-sm font-semibold text-rose-100 leading-normal mb-2">ความดันอากาศลดต่ำลง อากาศเข้าสู่ปอด</p>
-                        </button>
-                    </div>
-
-                    <!-- Timeline Segment Match Area -->
-                    <div class="bg-slate-950/80 p-4 rounded-2xl border border-rose-950/60 flex flex-col space-y-3">
-                        <div class="flex justify-between items-center">
-                            <span class="text-xs font-bold text-rose-300 uppercase tracking-wider flex items-center">
-                                <i class="fa-solid fa-timeline mr-2 text-rose-500 animate-pulse"></i> TIMELINE กระบวนการ
-                            </span>
-                            <span class="text-[10px] text-slate-400">เรียงให้ถูกต้องเพื่อเปิดใช้งานการแลกเปลี่ยนแก๊ส</span>
-                        </div>
-                        <div class="grid grid-cols-1 md:grid-cols-3 gap-3 relative" id="timeline-container">
-                            <!-- Slot 1 -->
-                            <div class="border border-dashed border-rose-900/50 bg-slate-900/40 p-3 rounded-xl min-h-[80px] flex flex-col items-center justify-center text-center transition-all duration-300" id="slot-0">
-                                <span class="text-[10px] text-rose-500 font-extrabold uppercase tracking-widest mb-1">ขั้นตอนที่ 1</span>
-                                <span class="text-xs text-slate-500 font-medium italic select-none">ว่าง - โปรดจับคู่</span>
-                            </div>
-                            <!-- Slot 2 -->
-                            <div class="border border-dashed border-rose-900/50 bg-slate-900/40 p-3 rounded-xl min-h-[80px] flex flex-col items-center justify-center text-center transition-all duration-300" id="slot-1">
-                                <span class="text-[10px] text-rose-500 font-extrabold uppercase tracking-widest mb-1">ขั้นตอนที่ 2</span>
-                                <span class="text-xs text-slate-500 font-medium italic select-none">ว่าง - โปรดจับคู่</span>
-                            </div>
-                            <!-- Slot 3 -->
-                            <div class="border border-dashed border-rose-900/50 bg-slate-900/40 p-3 rounded-xl min-h-[80px] flex flex-col items-center justify-center text-center transition-all duration-300" id="slot-2">
-                                <span class="text-[10px] text-rose-500 font-extrabold uppercase tracking-widest mb-1">ขั้นตอนที่ 3</span>
-                                <span class="text-xs text-slate-500 font-medium italic select-none">ว่าง - โปรดจับคู่</span>
-                            </div>
-                        </div>
-                    </div>
-                </div>
-
-                <!-- Emergency Manual Control Switch -->
-                <div class="bg-slate-950/50 border border-rose-950/35 p-3 rounded-xl flex items-center justify-between">
-                    <span class="text-xs text-rose-300 font-bold"><i class="fa-solid fa-sliders mr-1"></i> ไม่สามารถเชื่อมต่อกล้องได้? ใช้งานคลิกสำรอง:</span>
-                    <div class="flex space-x-2">
-                        <button onclick="manualSelect(1)" class="bg-rose-950 border border-rose-700 text-rose-200 text-xs font-extrabold px-4 py-1.5 rounded-lg hover:bg-rose-600 hover:text-white transition-all">กดตัวเลือก 1</button>
-                        <button onclick="manualSelect(2)" class="bg-rose-950 border border-rose-700 text-rose-200 text-xs font-extrabold px-4 py-1.5 rounded-lg hover:bg-rose-600 hover:text-white transition-all">กดตัวเลือก 2</button>
-                        <button onclick="manualSelect(3)" class="bg-rose-950 border border-rose-700 text-rose-200 text-xs font-extrabold px-4 py-1.5 rounded-lg hover:bg-rose-600 hover:text-white transition-all">กดตัวเลือก 3</button>
-                    </div>
-                </div>
-            </section>
-        </main>
-    </div>
-
-    <!-- Start Tutorial & Onboarding Screen Overlay -->
-    <div id="start-modal" class="fixed inset-0 z-50 bg-slate-950/95 flex items-center justify-center p-4 backdrop-blur-md">
-        <div class="bg-gradient-to-br from-slate-900 via-rose-950/40 to-slate-950 w-full max-w-2xl rounded-3xl p-8 border border-rose-950 shadow-2xl relative overflow-hidden">
-            
-            <!-- Glow background decor -->
-            <div class="absolute -top-12 -left-12 w-48 h-48 bg-rose-600/20 rounded-full blur-3xl pointer-events-none"></div>
-
-            <div class="text-center mb-6">
-                <div class="bg-rose-600 text-white w-16 h-16 rounded-2xl flex items-center justify-center mx-auto mb-3 shadow-lg shadow-rose-600/30">
-                    <i class="fa-solid fa-lungs text-3xl animate-bounce"></i>
-                </div>
-                <h1 class="text-2xl md:text-3xl font-black text-white">AR Respiratory Mission</h1>
-                <p class="text-sm text-rose-400 font-semibold tracking-wider uppercase mt-1">ภารกิจพิชิตระบบหายใจของมนุษย์</p>
-                <div class="flex justify-center space-x-2 mt-2">
-                    <span class="text-[10px] bg-rose-950 border border-rose-800 text-rose-300 font-bold px-2.5 py-0.5 rounded-full">ว1.2 ม.2/2</span>
-                    <span class="text-[10px] bg-rose-950 border border-rose-800 text-rose-300 font-bold px-2.5 py-0.5 rounded-full">ว1.2 ม.2/3</span>
-                </div>
-            </div>
-
-            <!-- Onboarding Description -->
-            <div class="space-y-4 mb-6 text-sm text-slate-300">
-                <div class="bg-slate-950/60 p-4 rounded-xl border border-rose-950/50">
-                    <h3 class="font-bold text-rose-400 mb-1"><i class="fa-solid fa-gamepad mr-1.5"></i> วิธีการเล่นเกม:</h3>
-                    <p class="leading-relaxed text-xs">คุณจะสวมบทบาทเป็น **นักวิทยาศาสตร์รุ่นเยาว์** จัดเรียงกระบวนการทำงานของอวัยวะและกลไกในการหายใจเข้า-ออก รวมถึงการแลกเปลี่ยนแก๊สให้ครบถ้วนทั้ง 20 ด่าน โดยจัดวางข้อมูลลงในกระบวนการตามลำดับที่ถูกต้องตามกลไกธรรมชาติ</p>
-                </div>
-
-                <div class="grid grid-cols-1 md:grid-cols-2 gap-3">
-                    <div class="bg-slate-950/60 p-4 rounded-xl border border-rose-950/50 flex flex-col justify-between">
-                        <div>
-                            <h4 class="font-bold text-rose-400 text-xs mb-1"><i class="fa-solid fa-camera mr-1.5"></i> ควบคุมผ่านกล้อง AR:</h4>
-                            <p class="text-slate-400 text-[11px] leading-relaxed">ยกมือขึ้นหน้าจอเพื่อเปิดการตรวจจับ ชู 1, 2 หรือ 3 นิ้วค้างเป็นเวลา 1 วินาทีเพื่อเลือกตัวเลือก โดยไม่ต้องใช้เมาส์!</p>
-                        </div>
-                    </div>
-                    <div class="bg-slate-950/60 p-4 rounded-xl border border-rose-950/50 flex flex-col justify-between">
-                        <div>
-                            <h4 class="font-bold text-rose-400 text-xs mb-1"><i class="fa-solid fa-desktop mr-1.5"></i> ควบคุมสำรองแบบคลิก:</h4>
-                            <p class="text-slate-400 text-[11px] leading-relaxed">หากไม่มีกล้องเว็บแคม หรือต้องการความสะดวก คุณสามารถใช้เมาส์คลิกเพื่อตอบ หรือใช้คีย์บอร์ดกดเลข [1], [2], [3] เพื่อตอบอย่างรวดเร็วได้เช่นกัน</p>
-                        </div>
-                    </div>
-                </div>
-            </div>
-
-            <!-- Start Controls -->
-            <div class="flex flex-col sm:flex-row gap-3">
-                <button onclick="startGameWithAR(true)" class="flex-1 bg-gradient-to-r from-rose-600 to-crimson-500 hover:from-rose-500 hover:to-crimson-400 text-white font-extrabold py-3.5 px-6 rounded-2xl transition-all duration-300 shadow-lg shadow-rose-600/25 flex items-center justify-center space-x-2">
-                    <i class="fa-solid fa-camera-rotate text-lg"></i>
-                    <span>เริ่มภารกิจด้วยกล้อง AR</span>
-                </button>
-                <button onclick="startGameWithAR(false)" class="bg-slate-900 hover:bg-slate-800 text-rose-400 border border-rose-950 font-extrabold py-3.5 px-6 rounded-2xl transition-all duration-300 flex items-center justify-center space-x-2">
-                    <i class="fa-solid fa-computer-mouse"></i>
-                    <span>เล่นแบบคลิกปกติ</span>
-                </button>
-            </div>
-        </div>
-    </div>
-
-    <!-- Summary Screen Overlay (Hidden at first) -->
-    <div id="result-modal" class="fixed inset-0 z-50 bg-slate-950/95 flex items-center justify-center p-4 backdrop-blur-md hidden">
-        <div class="bg-gradient-to-br from-slate-900 via-rose-950/40 to-slate-950 w-full max-w-3xl rounded-3xl p-8 border border-rose-950 shadow-2xl relative overflow-hidden flex flex-col md:flex-row gap-6">
-            
-            <!-- Left Half: Stats & Rank Badge -->
-            <div class="flex-1 flex flex-col justify-between">
-                <div>
-                    <span class="text-rose-400 text-xs font-bold uppercase tracking-widest block">MISSION COMPLETED</span>
-                    <h2 class="text-3xl font-black text-white mt-1">สรุปผลภารกิจวิทยาศาสตร์</h2>
-                    <p class="text-xs text-rose-300">กระบวนการหายใจและการดูแลสุขภาวะระบบหายใจ</p>
-                </div>
-
-                <!-- Animated Rank Badge -->
-                <div class="my-6 bg-slate-950/60 border border-rose-950/80 p-5 rounded-2xl text-center relative overflow-hidden">
-                    <div class="absolute inset-0 bg-gradient-to-tr from-rose-600/5 to-transparent pointer-events-none"></div>
-                    <span class="text-[10px] text-rose-400 font-bold block tracking-widest uppercase">ระดับความเข้าใจปัจจุบัน</span>
-                    <span id="result-rank-title" class="text-2xl font-black text-rose-100 tracking-wide mt-1 block animate-pulse">นักสำรวจร่างกาย</span>
-                    <div id="result-rank-badge" class="mt-3 inline-flex bg-rose-950 text-rose-400 border border-rose-700 text-xs px-4 py-1.5 rounded-full font-bold">
-                        <i class="fa-solid fa-medal mr-1.5"></i> ได้รับเหรียญรางวัลพิเศษ
-                    </div>
-                </div>
-
-                <!-- Numeric Score List -->
-                <div class="grid grid-cols-2 gap-3 text-xs">
-                    <div class="bg-slate-950/40 p-3 rounded-xl border border-rose-950/30">
-                        <span class="text-slate-400 block">คะแนนสะสม</span>
-                        <span id="result-score" class="text-lg font-black text-rose-100">0</span>
-                    </div>
-                    <div class="bg-slate-950/40 p-3 rounded-xl border border-rose-950/30">
-                        <span class="text-slate-400 block">อัตราความถูกต้อง</span>
-                        <span id="result-accuracy" class="text-lg font-black text-rose-100">0%</span>
-                    </div>
-                    <div class="bg-slate-950/40 p-3 rounded-xl border border-rose-950/30">
-                        <span class="text-slate-400 block">คอมโบสูงสุด</span>
-                        <span id="result-maxcombo" class="text-lg font-black text-rose-100">x0</span>
-                    </div>
-                    <div class="bg-slate-950/40 p-3 rounded-xl border border-rose-950/30">
-                        <span class="text-slate-400 block">เวลาที่ใช้</span>
-                        <span id="result-time" class="text-lg font-black text-rose-100">00:00</span>
-                    </div>
-                </div>
-            </div>
-
-            <!-- Right Half: Education Health Advice & Restart Controls -->
-            <div class="flex-1 flex flex-col justify-between border-t md:border-t-0 md:border-l border-rose-950/50 pt-6 md:pt-0 md:pl-6">
-                <!-- ว1.2 ม.2/3 Healthy tips section -->
-                <div class="space-y-4">
-                    <span class="text-xs font-bold text-rose-400 tracking-wider uppercase block">
-                        <i class="fa-solid fa-heart-pulse text-rose-500 animate-pulse mr-1"></i> คำแนะนำสุขภาวะ (ว1.2 ม.2/3)
-                    </span>
-                    
-                    <div class="space-y-2.5 text-xs text-slate-300">
-                        <div class="flex items-start space-x-3">
-                            <div class="bg-emerald-950 border border-emerald-800 text-emerald-400 p-1.5 rounded-lg text-[10px] mt-0.5">
-                                <i class="fa-solid fa-shield"></i>
-                            </div>
-                            <div>
-                                <p class="font-bold text-emerald-300 text-[11px]">ออกกำลังกายอย่างเหมาะสมสม่ำเสมอ</p>
-                                <p class="text-slate-400 text-[10px]">ช่วยกระตุ้นหัวใจ และสร้างความแข็งแรงของกะบังลม เพื่อขยายความจุปอดให้มีประสิทธิภาพสูงสุด</p>
-                            </div>
-                        </div>
-
-                        <div class="flex items-start space-x-3">
-                            <div class="bg-rose-950 border border-rose-800 text-rose-400 p-1.5 rounded-lg text-[10px] mt-0.5">
-                                <i class="fa-solid fa-ban"></i>
-                            </div>
-                            <div>
-                                <p class="font-bold text-rose-300 text-[11px]">หลีกเลี่ยงบุหรี่ ควันบุหรี่มือสอง และสารเสพติด</p>
-                                <p class="text-slate-400 text-[10px]">ป้องกันสารทาร์สะสมเกาะขัดขวางการแพร่ของออกซิเจน และหลีกเลี่ยงโอกาสการเป็นโรคถุงลมโป่งพอง</p>
-                            </div>
-                        </div>
-
-                        <div class="flex items-start space-x-3">
-                            <div class="bg-sky-950 border border-sky-800 text-sky-400 p-1.5 rounded-lg text-[10px] mt-0.5">
-                                <i class="fa-solid fa-mask-face"></i>
-                            </div>
-                            <div>
-                                <p class="font-bold text-sky-300 text-[11px]">สวมหน้ากากอนามัยขณะอยู่ในพื้นที่ที่มีฝุ่น PM 2.5</p>
-                                <p class="text-slate-400 text-[10px]">ฝุ่นขนาดจิ๋วสามารถลักลอบผ่านระบบคัดกรองข้ามเข้าไปอักเสบในเซลล์ และแพร่กระจายลึกเข้าสู่หลอดเลือดฝอยได้</p>
-                            </div>
-                        </div>
-                    </div>
-                </div>
-
-                <!-- Action buttons -->
-                <div class="mt-6 space-y-2">
-                    <button onclick="restartGame()" class="w-full bg-gradient-to-r from-rose-600 to-crimson-500 hover:from-rose-500 hover:to-crimson-400 text-white font-extrabold py-3.5 px-6 rounded-2xl transition-all duration-300 shadow-lg flex items-center justify-center space-x-2">
-                        <i class="fa-solid fa-arrows-rotate"></i>
-                        <span>เริ่มต้นใหม่อีกครั้ง</span>
-                    </button>
-                    <button onclick="closeResultModal()" class="w-full bg-slate-900 hover:bg-slate-800 text-rose-400 border border-rose-950 py-2.5 rounded-2xl font-bold text-xs transition-all text-center block">
-                        ปิดหน้าต่าง และดูบอร์ดเกม
-                    </button>
-                </div>
-            </div>
-        </div>
-    </div>
-
-    <script>
-        /* ==========================================
-           Web Audio API Sound Synthesizer Engine
-           ========================================== */
-        class AudioEngine {
-            constructor() {
-                this.ctx = null;
-            }
-
-            init() {
-                if (!this.ctx) {
-                    this.ctx = new (window.AudioContext || window.webkitAudioContext)();
-                }
-            }
-
-            playHeartbeat() {
-                this.init();
-                const now = this.ctx.currentTime;
-                // Double thump for heartbeat sound
-                this.playThump(now);
-                this.playThump(now + 0.18);
-            }
-
-            playThump(time) {
-                const osc = this.ctx.createOscillator();
-                const gain = this.ctx.createGain();
-                osc.type = 'sine';
-                osc.frequency.setValueAtTime(60, time);
-                osc.frequency.exponentialRampToValueAtTime(0.01, time + 0.15);
-                
-                gain.gain.setValueAtTime(0.6, time);
-                gain.gain.exponentialRampToValueAtTime(0.01, time + 0.15);
-                
-                osc.connect(gain);
-                gain.connect(this.ctx.destination);
-                osc.start(time);
-                osc.stop(time + 0.16);
-            }
-
-            playSuccess() {
-                this.init();
-                const now = this.ctx.currentTime;
-                const notes = [261.63, 329.63, 392.00, 523.25]; // C E G C major chord
-                notes.forEach((freq, index) => {
-                    const osc = this.ctx.createOscillator();
-                    const gain = this.ctx.createGain();
-                    osc.type = 'sine';
-                    osc.frequency.setValueAtTime(freq, now + index * 0.08);
-                    
-                    gain.gain.setValueAtTime(0.2, now + index * 0.08);
-                    gain.gain.exponentialRampToValueAtTime(0.001, now + index * 0.08 + 0.35);
-                    
-                    osc.connect(gain);
-                    gain.connect(this.ctx.destination);
-                    osc.start(now + index * 0.08);
-                    osc.stop(now + index * 0.08 + 0.4);
-                });
-            }
-
-            playFail() {
-                this.init();
-                const now = this.ctx.currentTime;
-                const osc = this.ctx.createOscillator();
-                const gain = this.ctx.createGain();
-                osc.type = 'triangle';
-                osc.frequency.setValueAtTime(140, now);
-                osc.frequency.linearRampToValueAtTime(70, now + 0.3);
-                
-                gain.gain.setValueAtTime(0.4, now);
-                gain.gain.exponentialRampToValueAtTime(0.001, now + 0.3);
-                
-                osc.connect(gain);
-                gain.connect(this.ctx.destination);
-                osc.start(now);
-                osc.stop(now + 0.32);
-            }
-
-            playClick() {
-                this.init();
-                const now = this.ctx.currentTime;
-                const osc = this.ctx.createOscillator();
-                const gain = this.ctx.createGain();
-                osc.type = 'sine';
-                osc.frequency.setValueAtTime(800, now);
-                osc.frequency.exponentialRampToValueAtTime(400, now + 0.04);
-                
-                gain.gain.setValueAtTime(0.15, now);
-                gain.gain.exponentialRampToValueAtTime(0.01, now + 0.05);
-                
-                osc.connect(gain);
-                gain.connect(this.ctx.destination);
-                osc.start(now);
-                osc.stop(now + 0.06);
-            }
-        }
-
-        const sound = new AudioEngine();
-    </script>
-
-    <script>
-        /* ==========================================
-           Ambient Background Particles Implementation
-           ========================================== */
-        const bgCanvas = document.getElementById('bg-particles-canvas');
-        const bgCtx = bgCanvas.getContext('2d');
-        let bgParticles = [];
-
-        function initBgParticles() {
-            bgCanvas.width = window.innerWidth;
-            bgCanvas.height = window.innerHeight;
-            bgParticles = [];
-            for (let i = 0; i < 40; i++) {
-                bgParticles.push({
-                    x: Math.random() * bgCanvas.width,
-                    y: Math.random() * bgCanvas.height,
-                    radius: Math.random() * 2 + 1,
-                    speedY: - (Math.random() * 0.3 + 0.1),
-                    opacity: Math.random() * 0.4 + 0.1,
-                    color: Math.random() > 0.5 ? '244, 63, 94' : '6, 182, 212' // red-pink or cyan
-                });
-            }
-        }
-
-        function drawBgParticles() {
-            bgCtx.clearRect(0, 0, bgCanvas.width, bgCanvas.height);
-            bgParticles.forEach(p => {
-                p.y += p.speedY;
-                if (p.y < -10) p.y = bgCanvas.height + 10;
-                
-                bgCtx.beginPath();
-                bgCtx.arc(p.x, p.y, p.radius, 0, Math.PI * 2);
-                bgCtx.fillStyle = `rgba(${p.color}, ${p.opacity})`;
-                bgCtx.fill();
-            });
-            requestAnimationFrame(drawBgParticles);
-        }
-
-        window.addEventListener('resize', () => {
-            bgCanvas.width = window.innerWidth;
-            bgCanvas.height = window.innerHeight;
-        });
-
-        initBgParticles();
-        drawBgParticles();
-    </script>
-
-    <script>
-        /* ==========================================
-           Three.js 3D AR Human Lungs System Rendering
-           ========================================== */
-        const threeCanvas = document.getElementById('three-canvas');
-        let renderer, scene, camera, lungsGroup;
-        let leftLung, rightLung, heart, trachea;
-        let o2FlowSystem = [], co2FlowSystem = [];
-        let breatheCycle = 0;
-        let currentBreatheSpeed = 0.035;
-
-        function initThreeJS() {
-            scene = new THREE.Scene();
-            
-            // Create Transparent Background for AR View overlapping
-            camera = new THREE.PerspectiveCamera(45, threeCanvas.clientWidth / threeCanvas.clientHeight, 0.1, 100);
-            camera.position.set(0, 0, 7);
-
-            renderer = new THREE.WebGLRenderer({ canvas: threeCanvas, alpha: true, antialias: true });
-            renderer.setSize(threeCanvas.clientWidth, threeCanvas.clientHeight);
-            renderer.setPixelRatio(window.devicePixelRatio);
-
-            // Lighting setup
-            const ambientLight = new THREE.AmbientLight(0xff4d6d, 0.4);
-            scene.add(ambientLight);
-
-            const directLight1 = new THREE.DirectionalLight(0x00f0ff, 1.2); // Cool Blue Oxygen light
-            directLight1.position.set(-5, 3, 5);
-            scene.add(directLight1);
-
-            const directLight2 = new THREE.DirectionalLight(0xff003c, 1.5); // Warm Crimson Blood light
-            directLight2.position.set(5, -3, 3);
-            scene.add(directLight2);
-
-            // Core anatomical group container
-            lungsGroup = new THREE.Group();
-            scene.add(lungsGroup);
-
-            // 1. Procedural Trachea (Windpipe)
-            const tracheaGeom = new THREE.CylinderGeometry(0.18, 0.18, 1.8, 16);
-            const tracheaMat = new THREE.MeshPhysicalMaterial({
-                color: 0xe11d48,
-                roughness: 0.3,
-                metalness: 0.1,
-                transmission: 0.4,
-                thickness: 0.2
-            });
-            trachea = new THREE.Mesh(tracheaGeom, tracheaMat);
-            trachea.position.y = 1.6;
-            lungsGroup.add(trachea);
-
-            // 2. Procedural Lungs (Left & Right) using stretched geometries
-            const lungGeom = new THREE.SphereGeometry(1, 32, 32);
-            const lungMat = new THREE.MeshPhysicalMaterial({
-                color: 0xff4d6d,
-                roughness: 0.6,
-                metalness: 0.1,
-                clearcoat: 0.2,
-                transmission: 0.2
-            });
-
-            leftLung = new THREE.Mesh(lungGeom, lungMat);
-            leftLung.scale.set(0.75, 1.6, 0.8);
-            leftLung.position.set(-0.9, 0.2, 0);
-            leftLung.rotation.z = -0.08;
-            lungsGroup.add(leftLung);
-
-            rightLung = new THREE.Mesh(lungGeom, lungMat);
-            rightLung.scale.set(0.75, 1.6, 0.8);
-            rightLung.position.set(0.9, 0.2, 0);
-            rightLung.rotation.z = 0.08;
-            lungsGroup.add(rightLung);
-
-            // 3. Heart representation
-            const heartGeom = new THREE.SphereGeometry(0.38, 16, 16);
-            const heartMat = new THREE.MeshStandardMaterial({
-                color: 0xff003c,
-                roughness: 0.2,
-                metalness: 0.6
-            });
-            heart = new THREE.Mesh(heartGeom, heartMat);
-            heart.position.set(-0.25, -0.2, 0.3); // Left aligned heart location
-            lungsGroup.add(heart);
-
-            // Adjust position for AR portrait viewing
-            lungsGroup.position.set(0, -0.6, 0);
-
-            // Initialize O2 and CO2 dynamic flow particles
-            createFlowParticles();
-
-            // Run rendering frame loops
-            animateThree();
-        }
-
-        function createFlowParticles() {
-            // Remove previous particles if any
-            o2FlowSystem.forEach(p => scene.remove(p.mesh));
-            co2FlowSystem.forEach(p => scene.remove(p.mesh));
-            o2FlowSystem = [];
-            co2FlowSystem = [];
-
-            // Cyan Oxygen flow
-            const o2Geom = new THREE.SphereGeometry(0.045, 8, 8);
-            const o2Mat = new THREE.MeshBasicMaterial({ color: 0x06b6d4 });
-            for (let i = 0; i < 15; i++) {
-                const mesh = new THREE.Mesh(o2Geom, o2Mat);
-                scene.add(mesh);
-                resetO2Particle(mesh, i * -0.15);
-            }
-
-            // Crimson Carbon Dioxide flow
-            const co2Geom = new THREE.SphereGeometry(0.045, 8, 8);
-            const co2Mat = new THREE.MeshBasicMaterial({ color: 0xe11d48 });
-            for (let i = 0; i < 15; i++) {
-                const mesh = new THREE.Mesh(co2Geom, co2Mat);
-                scene.add(mesh);
-                resetCO2Particle(mesh, i * -0.15);
-            }
-        }
-
-        function resetO2Particle(mesh, offset = 0) {
-            mesh.position.set(0, 2.5, 0); // Top of trachea
-            mesh.userData = {
-                t: offset,
-                speed: 0.02 + Math.random() * 0.015,
-                phase: 'trachea'
-            };
-        }
-
-        function resetCO2Particle(mesh, offset = 0) {
-            mesh.position.set(Math.random() > 0.5 ? -0.8 : 0.8, -1.0, 0.1); // Bottom of lung
-            mesh.userData = {
-                t: offset,
-                speed: 0.02 + Math.random() * 0.015,
-                phase: 'lung'
-            };
-        }
-
-        function animateThree() {
-            requestAnimationFrame(animateThree);
-
-            // Breathe cycle animation scale loop (Inhale vs Exhale)
-            breatheCycle += currentBreatheSpeed;
-            const breatheScale = 1.0 + Math.sin(breatheCycle) * 0.08;
-            
-            if (leftLung && rightLung) {
-                leftLung.scale.set(0.7 * breatheScale, 1.5 * breatheScale, 0.7 * breatheScale);
-                rightLung.scale.set(0.7 * breatheScale, 1.5 * breatheScale, 0.7 * breatheScale);
-            }
-
-            // Beat the heart at separate pace
-            const heartBeat = 1.0 + Math.pow(Math.abs(Math.sin(breatheCycle * 2.2)), 8) * 0.07;
-            if (heart) {
-                heart.scale.set(heartBeat, heartBeat, heartBeat);
-            }
-
-            // Animate Oxygen (O2) particles moving downwards
-            o2FlowSystem.forEach(p => {
-                p.userData.t += p.userData.speed;
-                if (p.userData.t < 0) {
-                    p.mesh.visible = false;
-                    return;
-                }
-                p.mesh.visible = true;
-
-                if (p.userData.t < 0.5) {
-                    // Moving inside trachea
-                    const step = p.userData.t / 0.5;
-                    p.mesh.position.set(0, 2.5 - step * 1.5, 0.1);
-                } else if (p.userData.t < 1.0) {
-                    // Branching into left / right lung
-                    const step = (p.userData.t - 0.5) / 0.5;
-                    const sign = (o2FlowSystem.indexOf(p) % 2 === 0) ? -1 : 1;
-                    p.mesh.position.set(sign * step * 0.8, 1.0 - step * 1.5, 0.1);
-                } else {
-                    resetO2Particle(p.mesh);
-                }
-            });
-
-            // Animate Carbon dioxide (CO2) particles moving upwards
-            co2FlowSystem.forEach(p => {
-                p.userData.t += p.userData.speed;
-                if (p.userData.t < 0) {
-                    p.mesh.visible = false;
-                    return;
-                }
-                p.mesh.visible = true;
-
-                if (p.userData.t < 0.5) {
-                    // Flowing upward inside lungs to trachea base
-                    const step = p.userData.t / 0.5;
-                    const sign = (co2FlowSystem.indexOf(p) % 2 === 0) ? -1 : 1;
-                    p.mesh.position.set(sign * (0.8 - step * 0.8), -1.0 + step * 2.0, 0.1);
-                } else if (p.userData.t < 1.0) {
-                    // Exiting trachea out to top
-                    const step = (p.userData.t - 0.5) / 0.5;
-                    p.mesh.position.set(0, 1.0 + step * 1.5, 0.1);
-                } else {
-                    resetCO2Particle(p.mesh);
-                }
-            });
-
-            // Subtle base idle breathing drift of group
-            if (lungsGroup) {
-                lungsGroup.rotation.y = Math.sin(breatheCycle * 0.15) * 0.08;
-            }
-
-            renderer.render(scene, camera);
-        }
-
-        function triggerLevelSuccessVisuals() {
-            // Accelerate breathing, create special intense flow sequence of particles
-            currentBreatheSpeed = 0.12;
-            setTimeout(() => {
-                currentBreatheSpeed = 0.035;
-            }, 3000);
-        }
-
-        // Keep 3D scene aligned on responsive layout resizes
-        window.addEventListener('resize', () => {
-            if (!renderer) return;
-            const width = threeCanvas.clientWidth;
-            const height = threeCanvas.clientHeight;
-            renderer.setSize(width, height);
-            camera.aspect = width / height;
-            camera.updateProjectionMatrix();
-        });
-    </script>
-
-    <script>
-        /* ==========================================
-           Interactive Game Database & State Controller
-           ========================================== */
-        const QUESTION_POOL = [
-            {
-                category: "กลไกการหายใจเข้า",
-                question: "จงเรียงลำดับสถานะอวัยวะที่ถูกต้องเมื่อเริ่มสูดลมหายใจเข้า",
-                steps: [
-                    "กะบังลมหดตัวและเลื่อนต่ำลง",
-                    "กระดูกซี่โครงเคลื่อนตัวสูงขึ้น ช่องอกขยายตัว",
-                    "ความดันอากาศในปอดลดต่ำ อากาศภายนอกจึงไหลเข้า"
-                ],
-                order: [0, 1, 2]
-            },
-            {
-                category: "กลไกการหายใจออก",
-                question: "จงเรียงลำดับสถานะทางชีววิทยาที่เกิดขึ้นระหว่างการหายใจออก",
-                steps: [
-                    "กะบังลมคลายตัวและดันตัวสูงขึ้น",
-                    "กระดูกซี่โครงยุบต่ำลง ปริมาตรช่องอกเล็กลง",
-                    "ความดันในปอดสูงขึ้น ขับอากาศภายในออกสู่จมูก"
-                ],
-                order: [0, 1, 2]
-            },
-            {
-                category: "เส้นทางการเดินของอากาศขาเข้า",
-                question: "อากาศภายนอกเคลื่อนที่เข้าหาถุงลมปอดผ่านเส้นทางใดตามลำดับ",
-                steps: [
-                    "อากาศไหลผ่านจมูกและคอหอย",
-                    "เคลื่อนตัวผ่านกล่องเสียงและหลอดลมคอ",
-                    "เข้าสู่ขั้วปอด หลอดลมฝอย และสิ้นสุดที่ถุงลม"
-                ],
-                order: [0, 1, 2]
-            },
-            {
-                category: "การแลกเปลี่ยนแก๊สที่ปอด",
-                question: "เมื่อออกซิเจนเข้าถึงถุงลม จะมีกระบวนการแลกเปลี่ยนแก๊สเกิดขึ้นตามลำดับอย่างไร",
-                steps: [
-                    "ออกซิเจนสะสมตัวสูงภายในเยื่อบุถุงลม",
-                    "ออกซิเจนแพร่ข้ามผนังเซลล์เข้าสู่กระแสเลือดฝอย",
-                    "ออกซิเจนเข้ายึดเหนี่ยวกับเฮโมโกลบินในเม็ดเลือดแดง"
-                ],
-                order: [0, 1, 2]
-            },
-            {
-                category: "การแลกเปลี่ยนแก๊สที่เซลล์เนื้อเยื่อ",
-                question: "ออกซิเจนเข้าสู่เนื้อเยื่อและรับคาร์บอนไดออกไซด์กลับมาอย่างไร",
-                steps: [
-                    "เม็ดเลือดแดงปลดปล่อยออกซิเจนให้เซลล์ร่างกาย",
-                    "เซลล์นำออกซิเจนไปเผาผลาญได้คาร์บอนไดออกไซด์",
-                    "คาร์บอนไดออกไซด์แพร่กลับเข้าสู่หลอดเลือดฝอยดำ"
-                ],
-                order: [0, 1, 2]
-            },
-            {
-                category: "การกำจัดสิ่งแปลกปลอมในจมูก",
-                question: "ระบบหายใจส่วนต้นจัดการดักจับและทำความสะอาดฝุ่นละอองอย่างไร",
-                steps: [
-                    "ขนจมูกกักดักสิ่งแปลกปลอมและฝุ่นละอองขนาดใหญ่",
-                    "ต่อมเมือกหลั่งสารเหนียวคอยเก็บซับฝุ่นละเอียดรอบใน",
-                    "ซิเลีย (Cilia) พัดโบกเมือกเหนียวที่ติดฝุ่นขึ้นมาที่คอหอย"
-                ],
-                order: [0, 1, 2]
-            },
-            {
-                category: "ความดันอากาศกับการหายใจ",
-                question: "ระบบประสาทควบคุมความสมดุลความดันภายในปอดให้สัมพันธ์กับอากาศอย่างไร",
-                steps: [
-                    "กล้ามเนื้อยึดซี่โครงหดตัวเพื่อดึงผนังอกให้ห่างออกจากปอด",
-                    "เนื้อปอดถูกยืดตามทำให้เกิดพื้นที่สูญญากาศชั่วคราว",
-                    "ความดันต่ำดึงดูดกระแสอากาศภายนอกวิ่งย้อนเข้ามาอย่างรวดเร็ว"
-                ],
-                order: [0, 1, 2]
-            },
-            {
-                category: "กระบวนการสร้างพลังงานระดับเซลล์",
-                question: "เมื่อเซลล์ได้รับออกซิเจนจะนำไปสู่ผลลัพธ์ของคาร์บอนไดออกไซด์อย่างไร",
-                steps: [
-                    "สารอาหารและน้ำตาลในเซลล์ถูกสลายด้วยปฏิกิริยากับออกซิเจน",
-                    "ร่างกายได้รับพลังงาน ATP น้ำ และเกิดเศษเหลือเป็น CO₂",
-                    "CO₂ จะละลายเข้าในน้ำพลาสม่าของเลือดเพื่อนำไปขับถ่ายทิ้ง"
-                ],
-                order: [0, 1, 2]
-            },
-            {
-                category: "กลไกการจามขับไล่สิ่งแปลกปลอม",
-                question: "เมื่อเกิดการระคายเคืองในรูจมูก ร่างกายตอบสนองอย่างไร",
-                steps: [
-                    "มีสารละคายเคืองเกาะผนังเยื่อบุสั่งการส่งประสาทสู่สมอง",
-                    "ร่างกายกระตุ้นสูดหายใจลึกดึงอากาศปริมาณมากแล้วกลั้นทันที",
-                    "เกร็งกล้ามเนื้ออกขยับลมพุ่งสวนผ่านรูจมูกและคอปัดสิ่งระคายเคืองออก"
-                ],
-                order: [0, 1, 2]
-            },
-            {
-                category: "การลำเลียงคาร์บอนไดออกไซด์ออกจากร่างกาย",
-                question: "เรียงลำดับการขับถ่ายแก๊สคาร์บอนไดออกไซด์ออกจากร่างกาย",
-                steps: [
-                    "หัวใจปั๊มเลือดดำที่มีคาร์บอนไดออกไซด์สูงกลับเข้าสู่ปอด",
-                    "แก๊สคาร์บอนไดออกไซด์แพร่จากเลือดกลับไปอยู่ในพื้นที่ว่างของถุงลม",
-                    "กะบังลมยกตัวดันกระบอกลมขับถ่ายแก๊ส CO₂ ออกไปภายนอก"
-                ],
-                order: [0, 1, 2]
-            },
-            {
-                category: "ผลของฝุ่น PM 2.5 ต่อร่างกาย (ว1.2 ม.2/3)",
-                question: "ฝุ่น PM 2.5 ก่อให้เกิดโรคอันตรายในระบบทางเดินหายใจอย่างไร",
-                steps: [
-                    "ฝุ่นที่มีขนาดเล็กมากเล็ดลอดผ่านขนและข้ามเมือกกักกรองได้ง่าย",
-                    "ลอยผ่านเข้าสะสมภายในถุงลมปอดและทำลายโครงสร้างภายใน",
-                    "แพร่ผ่านหลอดเลือดฝอยเข้าสู่ระบบเลือด ก่อการอักเสบเรื้อรังทั่วร่างกาย"
-                ],
-                order: [0, 1, 2]
-            },
-            {
-                category: "ภัยเงียบของสารทาร์จากบุหรี่ (ว1.2 ม.2/3)",
-                question: "การสูดดมสารพิษและน้ำมันดิน (Tar) จากควันบุหรี่ก่อพยาธิสภาพอย่างไร",
-                steps: [
-                    "ฝุ่นเหนียวเหนอะจากน้ำมันดินสะสมหนาเคลือบทับบริเวณเยื่อบุปอด",
-                    "ขัดขวางการทำงานของซิเลีย และทำให้ถุงลมปอดสูญเสียความยืดหยุ่น",
-                    "ถุงลมโป่งพองออกจนฉีกขาด ผิวการแลกเปลี่ยนแก๊สลดฮวบฮาบ"
-                ],
-                order: [0, 1, 2]
-            },
-            {
-                category: "ผลเสียของแก๊สคาร์บอนมอนอกไซด์ (ว1.2 ม.2/3)",
-                question: "แก๊ส CO ที่มักเกิดจากการเผาไหม้และท่อไอเสีย รถยนต์ทำลายร่างกายอย่างไร",
-                steps: [
-                    "สูดดมแก๊สคาร์บอนมอนอกไซด์ปะปนกับอากาศเข้าสู่หลอดลม",
-                    "แก๊สจับเข้ากับเฮโมโกลบินในเม็ดเลือดแดงได้ดีกว่าออกซิเจน 200 เท่า",
-                    "เม็ดเลือดหมดความสามารถในการขนถ่าย O₂ ส่งผลให้เซลล์ขาดอากาศรุนแรง"
-                ],
-                order: [0, 1, 2]
-            },
-            {
-                category: "ความจุปอดและการออกกำลังกาย (ว1.2 ม.2/3)",
-                question: "การออกกำลังกายแบบแอโรบิกอย่างต่อเนื่องส่งผลดีต่ออวัยวะหายใจอย่างไร",
-                steps: [
-                    "กล้ามเนื้อหัวใจ กะบังลม และกล้ามเนื้อซี่โครงผ่านการฝึกบ่อยครั้ง",
-                    "อวัยวะมีมัดใยกล้ามเนื้อที่หนาแน่น แข็งแรง และขยายหดตัวได้ดีขึ้น",
-                    "ความจุปอดขยายตัวเพิ่มขึ้น ร่างกายรับออกซิเจนได้ดียิ่งขึ้นล้าช้าลง"
-                ],
-                order: [0, 1, 2]
-            },
-            {
-                category: "ระบบควบคุมกรดด่างในเลือด",
-                question: "สมองกระตุ้นให้หายใจรัวขึ้นเมื่อร่างกายสะสมของเสียอย่างไร",
-                steps: [
-                    "การออกกำลังกายหนักทำให้เซลล์สร้างกรด CO₂ ปล่อยสู่กระแสเลือด",
-                    "สมองส่วนหลัง (Medulla Oblongata) ตรวจจับพบความเป็นกรดในเลือดสูงขึ้น",
-                    "สมองส่งกระแสเร่งกล้ามเนื้อกะบังลมหดตัวถี่ขึ้นเพื่อขจัดกรดแก๊สออก"
-                ],
-                order: [0, 1, 2]
-            },
-            {
-                category: "กลไกการสะอึก (Hiccup)",
-                question: "อาการสะอึกมีขั้นตอนการทำงานของระบบหายใจที่ขัดกันอย่างไร",
-                steps: [
-                    "เกิดความระคายเคืองกะบังลมทำให้กะบังลมหดเกร็งตัวกะทันหัน",
-                    "มีการดึงอากาศเข้าสู่ท่อลมอย่างฉับพลันในขณะกำลังเปิด",
-                    "ฝาปิดกล่องเสียงปิดกั้นกระแสลมกะทันหัน เกิดเสียง 'อึก' ขึ้น"
-                ],
-                order: [0, 1, 2]
-            },
-            {
-                category: "กระบวนการฟอกเลือดดำให้เป็นเลือดแดง",
-                question: "เลือดที่ส่งไปยังปอดถูกปรับเปลี่ยนสัดส่วนปริมาณแก๊สอย่างไร",
-                steps: [
-                    "เลือดดำข้นที่มีออกซิเจนต่ำถูกสูบฉีดเข้าสู่เส้นเลือดฝอยในปอด",
-                    "แก๊สคาร์บอนไดออกไซด์แพร่ออก และแก๊สออกซิเจนแพร่เข้าเม็ดเลือด",
-                    "เลือดเปลี่ยนสีเป็นแดงสด มีปริมาณออกซิเจนสูง พร้อมถูกส่งไปทั่วร่าง"
-                ],
-                order: [0, 1, 2]
-            },
-            {
-                category: "การระบายความร้อนผ่านลมหายใจ",
-                question: "ระบบทางเดินหายใจสามารถบรรเทาอุณหภูมิร่างกายได้อย่างไร",
-                steps: [
-                    "อุณหภูมิแกนกลางร่างกายสูงสะสมอยู่ในกลุ่มเม็ดเลือด",
-                    "ความร้อนและน้ำซึมผ่านเยื่อเมือกหลอดลมกลายเป็นไอน้ำลอยในระบบ",
-                    "ไอน้ำร้อนถูกส่งผ่านออกไปปะปนกับอากาศตอนหายใจออก"
-                ],
-                order: [0, 1, 2]
-            },
-            {
-                category: "หน้าที่ของเยื่อหุ้มปอด (Pleura)",
-                question: "โครงสร้างป้องกันการเสียดสีขณะหายใจเข้าออกทำงานอย่างไร",
-                steps: [
-                    "แผ่นเยื่อบางสองชั้นหุ้มคลุมประกบผนังปอดและช่องอกไว้",
-                    "เยื่อหุ้มปลดปล่อยของเหลวหล่อลื่นชนิดพิเศษเคลือบตรงกลาง",
-                    "ลดการเสียดสีรุนแรงถนอมเนื้อเยื่อในขณะที่ปอดขยายสุด"
-                ],
-                order: [0, 1, 2]
-            },
-            {
-                category: "การดูแลรักษาหลอดลมจากการแพ้ (ว1.2 ม.2/3)",
-                question: "พฤติกรรมลดความเสี่ยงการอักเสบของหลอดลมจากปัจจัยภายนอก",
-                steps: [
-                    "หลีกเลี่ยงการสัญจรหรือทำกิจกรรมกลางแจ้งในวันที่ค่าฝุ่นควันสูง",
-                    "ใส่ใจสวมหน้ากากกรองละเอียด และหลีกเลี่ยงพื้นที่อับอวนควันพิษ",
-                    "หมั่นตรวจสอบสภาพห้องพักทำความสะอาดเพื่อลดไรฝุ่นที่เป็นตัวเร่งหอบหืด"
-                ],
-                order: [0, 1, 2]
-            }
+<body>
+    <div id="root"></div>
+
+    <script type="text/babel">
+        const { useState, useEffect } = React;
+
+        // --- SVG Icons Components (แทนที่ Lucide-react เพื่อให้ใช้ใน HTML ได้) ---
+        const Play = ({ size = 24, className = "" }) => (<svg xmlns="http://www.w3.org/2000/svg" width={size} height={size} viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round" className={className}><polygon points="5 3 19 12 5 21 5 3"></polygon></svg>);
+        const Star = ({ size = 24, className = "" }) => (<svg xmlns="http://www.w3.org/2000/svg" width={size} height={size} viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round" className={className}><polygon points="12 2 15.09 8.26 22 9.27 17 14.14 18.18 21.02 12 17.77 5.82 21.02 7 14.14 2 9.27 8.91 8.26 12 2"></polygon></svg>);
+        const Mic = ({ size = 24, className = "" }) => (<svg xmlns="http://www.w3.org/2000/svg" width={size} height={size} viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round" className={className}><path d="M12 2a3 3 0 0 0-3 3v7a3 3 0 0 0 6 0V5a3 3 0 0 0-3-3Z"></path><path d="M19 10v2a7 7 0 0 1-14 0v-2"></path><line x1="12" y1="19" x2="12" y2="22"></line></svg>);
+        const Volume2 = ({ size = 24, className = "" }) => (<svg xmlns="http://www.w3.org/2000/svg" width={size} height={size} viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round" className={className}><polygon points="11 5 6 9 2 9 2 15 6 15 11 19 11 5"></polygon><path d="M15.54 8.46a5 5 0 0 1 0 7.07"></path><path d="M19.07 4.93a10 10 0 0 1 0 14.14"></path></svg>);
+        const Sparkles = ({ size = 24, className = "" }) => (<svg xmlns="http://www.w3.org/2000/svg" width={size} height={size} viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round" className={className}><path d="m12 3-1.912 5.813a2 2 0 0 1-1.275 1.275L3 12l5.813 1.912a2 2 0 0 1 1.275 1.275L12 21l1.912-5.813a2 2 0 0 1 1.275-1.275L21 12l-5.813-1.912a2 2 0 0 1-1.275-1.275L12 3Z"></path><path d="M5 3v4"></path><path d="M19 17v4"></path><path d="M3 5h4"></path><path d="M17 19h4"></path></svg>);
+        const ArrowLeft = ({ size = 24, className = "" }) => (<svg xmlns="http://www.w3.org/2000/svg" width={size} height={size} viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round" className={className}><line x1="19" y1="12" x2="5" y2="12"></line><polyline points="12 19 5 12 12 5"></polyline></svg>);
+        const HomeIcon = ({ size = 24, className = "" }) => (<svg xmlns="http://www.w3.org/2000/svg" width={size} height={size} viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round" className={className}><path d="m3 9 9-7 9 7v11a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2z"></path><polyline points="9 22 9 12 15 12 15 22"></polyline></svg>);
+
+        const WORLDS = [
+            { id: 1, name: "ดินแดนคำประสม", desc: "เต็มไปด้วยรถไฟ ดอกไม้ โรงเรียน", color: "from-green-400 to-emerald-600", icon: "🚂" },
+            { id: 2, name: "เมืองสระลดรูป", desc: "เมืองปริศนา ตัวสระหายไป!", color: "from-blue-400 to-indigo-600", icon: "🏰" },
+            { id: 3, name: "ป่าคำควบกล้ำ", desc: "มีกวาง ปลา ครู ขวาน กล้วย", color: "from-teal-400 to-green-600", icon: "🦌" },
+            { id: 4, name: "หมู่บ้านอักษรนำ", desc: "หนู หมอ หญิง หมี หลาน", color: "from-yellow-400 to-orange-500", icon: "🐻" },
+            { id: 5, name: "หุบเขาสระเปลี่ยนรูป", desc: "เป็ด เจ็บ เห็น เต็ม", color: "from-purple-400 to-pink-500", icon: "⛰️" },
+            { id: 6, name: "ป้อมปราการสะกดคำ", desc: "นักเรียน สะพาน กระดาษ", color: "from-slate-400 to-slate-600", icon: "🛡️" },
+            { id: 7, name: "หอคอยบรร-บัน", desc: "บรรทุก บรรยาย บันได บันทึก", color: "from-red-400 to-rose-600", icon: "🗼" },
+            { id: 8, name: "พระราชวังคำการันต์", desc: "พระจันทร์ สัตว์ โทรศัพท์ มนุษย์", color: "from-amber-300 to-yellow-500", icon: "👑" },
         ];
 
-        let gameScore = 0;
-        let gameCombo = 0;
-        let maxCombo = 0;
-        let currentQuestionIndex = 0;
-        let selectedOptionsSequence = []; // tracks index of chosen options
-        let shuffledOptionsMapping = []; // maps card 1,2,3 to the original index of current question
-        let totalTimeLeft = 120; // 2 minutes game timer
-        let gameActive = false;
-        let totalCorrectTaps = 0;
-        let totalIncorrectTaps = 0;
-        let isARActive = false;
-        let gestureConfirmTimer = 0;
-        let lastGesture = -1;
-        let inputDebounceTimer = false;
-        let gameTimerInterval = null;
+        const WORD_DATA = {
+            1: [ // ดินแดนคำประสม (ระดับ ป.4)
+                { word: "รถไฟ", parts: ["รถ", "ไฟ"] }, { word: "ดอกไม้", parts: ["ดอก", "ไม้"] }, { word: "โรงเรียน", parts: ["โรง", "เรียน"] },
+                { word: "น้ำตก", parts: ["น้ำ", "ตก"] }, { word: "เครื่องบิน", parts: ["เครื่อง", "บิน"] }, { word: "ทุ่งนา", parts: ["ทุ่ง", "นา"] },
+                { word: "ไฟฟ้า", parts: ["ไฟ", "ฟ้า"] }, { word: "บ้านเรือน", parts: ["บ้าน", "เรือน"] }, { word: "สวยงาม", parts: ["สวย", "งาม"] },
+                { word: "แม่น้ำ", parts: ["แม่", "น้ำ"] }, { word: "พัดลม", parts: ["พัด", "ลม"] }, { word: "ตู้เย็น", parts: ["ตู้", "เย็น"] },
+                { word: "รองเท้า", parts: ["รอง", "เท้า"] }, { word: "เสื้อผ้า", parts: ["เสื้อ", "ผ้า"] }, { word: "แว่นตา", parts: ["แว่น", "ตา"] }
+            ],
+            2: [ // เมืองสระลดรูป
+                { word: "แข็ง", parts: ["แ", "ข็", "ง"] }, { word: "เจ็ด", parts: ["เ", "จ็", "ด"] }, { word: "สวน", parts: ["ส", "ว", "น"] },
+                { word: "เก็ง", parts: ["เ", "ก็", "ง"] }, { word: "เงิน", parts: ["เ", "งิ", "น"] }, { word: "เคย", parts: ["เ", "ค", "ย"] },
+                { word: "ถาวร", parts: ["ถา", "วร"] }, { word: "ตับ", parts: ["ตั", "บ"] }, { word: "เพิ่ม", parts: ["เ", "พิ่", "ม"] },
+                { word: "สวย", parts: ["ส", "ว", "ย"] }, { word: "ก็อก", parts: ["ก็", "อ", "ก"] }, { word: "บังอร", parts: ["บัง", "อร"] }, 
+                { word: "เด็ก", parts: ["เ", "ด็", "ก"] }, { word: "นก", parts: ["น", "ก"] }, { word: "ร่ม", parts: ["ร่", "ม"] },
+                { word: "ขนม", parts: ["ข", "นม"] }
+            ],
+            3: [ // ป่าคำควบกล้ำ
+                { word: "กวาง", parts: ["กว", "า", "ง"] }, { word: "ปลา", parts: ["ปล", "า"] }, { word: "ครู", parts: ["ค", "รู"] },
+                { word: "ขวาน", parts: ["ขว", "า", "น"] }, { word: "กล้วย", parts: ["กล้ว", "ย"] }, { word: "กว้างขวาง", parts: ["กว้าง", "ขวาง"] },
+                { word: "ขวักไขว่", parts: ["ขวัก", "ไขว่"] }, { word: "คล่องแคล่ว", parts: ["คล่อง", "แคล่ว"] }, { word: "โปรยปราย", parts: ["โปรย", "ปราย"] },
+                { word: "เปลี่ยนแปลง", parts: ["เปลี่ยน", "แปลง"] }, { word: "ผลีผลาม", parts: ["ผลี", "ผลาม"] },
+                { word: "ครอบครัว", parts: ["ครอบ", "ครัว"] }, { word: "พร้อมเพรียง", parts: ["พร้อม", "เพรียง"] }, { word: "ปรับปรุง", parts: ["ปรับ", "ปรุง"] },
+                { word: "ขรุขระ", parts: ["ขรุ", "ขระ"] }
+            ],
+            4: [ // หมู่บ้านอักษรนำ
+                { word: "หนู", parts: ["ห", "นู"] }, { word: "หมอ", parts: ["ห", "มอ"] }, { word: "หญิง", parts: ["ห", "ญิง"] },
+                { word: "หมี", parts: ["ห", "มี"] }, { word: "หลาน", parts: ["ห", "ลาน"] }, { word: "หลอกลวง", parts: ["หลอก", "ลวง"] },
+                { word: "หลากหลาย", parts: ["หลาก", "หลาย"] }, { word: "อย่า", parts: ["อ", "ย่า"] }, { word: "อยู่", parts: ["อ", "ยู่"] },
+                { word: "อย่าง", parts: ["อ", "ย่าง"] }, { word: "อยาก", parts: ["อ", "ยาก"] }, { word: "หวานแหวว", parts: ["หวาน", "แหวว"] },
+                { word: "สนาม", parts: ["ส", "นาม"] }, { word: "ฉลาม", parts: ["ฉ", "ลาม"] }, { word: "ตลาด", parts: ["ต", "ลาด"] }, { word: "สนุก", parts: ["ส", "นุก"] }
+            ],
+            5: [ // หุบเขาสระเปลี่ยนรูป
+                { word: "เด็ก", parts: ["เ", "ด็", "ก"] }, { word: "เป็ด", parts: ["เ", "ป็", "ด"] }, { word: "เจ็บ", parts: ["เ", "จ็", "บ"] },
+                { word: "เห็น", parts: ["เ", "ห็", "น"] }, { word: "เต็ม", parts: ["เ", "ต็", "ม"] }, { word: "เล็ก", parts: ["เ", "ล็", "ก"] },
+                { word: "เข็ม", parts: ["เ", "ข็", "ม"] }, { word: "เห็ด", parts: ["เ", "ห็", "ด"] }, { word: "เย็น", parts: ["เ", "ย็", "น"] },
+                { word: "เม็ด", parts: ["เ", "ม็", "ด"] }, { word: "เดิน", parts: ["เ", "ดิ", "น"] }, { word: "เลิก", parts: ["เ", "ลิ", "ก"] },
+                { word: "เปิด", parts: ["เ", "ปิ", "ด"] }, { word: "เกิด", parts: ["เ", "กิ", "ด"] }, { word: "เขิน", parts: ["เ", "ขิ", "น"] }
+            ],
+            6: [ // ป้อมปราการสะกดคำ
+                { word: "นักเรียน", parts: ["นัก", "เรียน"] }, { word: "สะพาน", parts: ["สะ", "พาน"] }, { word: "กระดาษ", parts: ["กระ", "ดาษ"] },
+                { word: "จักรยาน", parts: ["จัก", "ร", "ยาน"] }, { word: "อาหาร", parts: ["อา", "หาร"] }, { word: "โรงเรียน", parts: ["โรง", "เรียน"] },
+                { word: "ดินสอ", parts: ["ดิน", "สอ"] }, { word: "ไข่พะโล้", parts: ["ไข่", "พะ", "โล้"] }, { word: "คุณพ่อ", parts: ["คุณ", "พ่อ"] },
+                { word: "คุณแม่", parts: ["คุณ", "แม่"] }, { word: "คุณยาย", parts: ["คุณ", "ยาย"] }, 
+                { word: "รางวัล", parts: ["ราง", "วัล"] }, { word: "รูปภาพ", parts: ["รูป", "ภาพ"] }, { word: "พยาบาล", parts: ["พ", "ยา", "บาล"] },
+                { word: "ธรรมชาติ", parts: ["ธรรม", "ชาติ"] }, { word: "โชคดี", parts: ["โชค", "ดี"] }
+            ],
+            7: [ // หอคอยบรร-บัน
+                { word: "บรรทุก", parts: ["บรร", "ทุก"] }, { word: "บรรยาย", parts: ["บรร", "ยาย"] }, { word: "บรรเลง", parts: ["บรร", "เลง"] },
+                { word: "บันได", parts: ["บัน", "ได"] }, { word: "บันทึก", parts: ["บัน", "ทึก"] }, { word: "บรรทัด", parts: ["บรร", "ทัด"] },
+                { word: "บรรจง", parts: ["บรร", "จง"] }, { word: "บรรจบ", parts: ["บรร", "จบ"] }, { word: "บันเทิง", parts: ["บัน", "เทิง"] },
+                { word: "บรรเทา", parts: ["บรร", "เทา"] }, { word: "บันดาล", parts: ["บัน", "ดาล"] }, { word: "บันลือ", parts: ["บัน", "ลือ"] },
+                { word: "บรรจุ", parts: ["บรร", "จุ"] }, { word: "บรรดา", parts: ["บรร", "ดา"] }, { word: "บรรยากาศ", parts: ["บรร", "ยา", "กาศ"] }
+            ],
+            8: [ // พระราชวังคำการันต์
+                { word: "พระจันทร์", parts: ["พระ", "จัน", "ทร์"] }, { word: "สัตว์", parts: ["สัต", "ว์"] }, { word: "โทรศัพท์", parts: ["โทร", "ศัพ", "ท์"] },
+                { word: "มนุษย์", parts: ["ม", "นุษ", "ย์"] }, { word: "สิทธิ์", parts: ["สิท", "ธิ์"] }, { word: "แพทย์", parts: ["แพท", "ย์"] },
+                { word: "รถยนต์", parts: ["รถ", "ยน", "ต์"] }, { word: "อาจารย์", parts: ["อา", "จาร", "ย์"] }, { word: "สัปดาห์", parts: ["สัป", "ดา", "ห์"] },
+                { word: "วันศุกร์", parts: ["วัน", "ศุก", "ร์"] }, { word: "อารมณ์", parts: ["อา", "รม", "ณ์"] }, { word: "วันเสาร์", parts: ["วัน", "เสา", "ร์"] },
+                { word: "ซื่อสัตย์", parts: ["ซื่อ", "สัต", "ย์"] }, { word: "เจดีย์", parts: ["เจ", "ดี", "ย์"] }, { word: "ประสบการณ์", parts: ["ประ", "สบ", "การ", "ณ์"] }
+            ]
+        };
 
-        // Shuffle helper
-        function shuffleArray(array) {
-            let arr = [...array];
-            for (let i = arr.length - 1; i > 0; i--) {
-                const j = Math.floor(Math.random() * (i + 1));
-                [arr[i], arr[j]] = [arr[j], arr[i]];
+        const speak = (text) => {
+            if ('speechSynthesis' in window) {
+                window.speechSynthesis.cancel();
+                const utterance = new SpeechSynthesisUtterance(text);
+                utterance.lang = 'th-TH';
+                utterance.rate = 0.8; 
+                window.speechSynthesis.speak(utterance);
             }
-            return arr;
-        }
+        };
 
-        // Initialize state variables
-        function initGame() {
-            gameScore = 0;
-            gameCombo = 0;
-            maxCombo = 0;
-            currentQuestionIndex = 0;
-            selectedOptionsSequence = [];
-            totalTimeLeft = 120;
-            totalCorrectTaps = 0;
-            totalIncorrectTaps = 0;
-            document.getElementById('display-score').innerText = '0000';
-            updateComboUI();
-            updateTimerDisplay();
-        }
-
-        function updateTimerDisplay() {
-            const minutes = Math.floor(totalTimeLeft / 60);
-            const seconds = totalTimeLeft % 60;
-            document.getElementById('display-timer').innerText = 
-                `${minutes.toString().padStart(2, '0')}:${seconds.toString().padStart(2, '0')}`;
-        }
-
-        function updateComboUI() {
-            const comboContainer = document.getElementById('combo-container');
-            const displayCombo = document.getElementById('display-combo');
-            if (gameCombo > 1) {
-                comboContainer.classList.remove('opacity-0');
-                displayCombo.innerText = `X${gameCombo}`;
-                if (gameCombo > maxCombo) maxCombo = gameCombo;
-            } else {
-                comboContainer.classList.add('opacity-0');
-            }
-        }
-
-        function loadCurrentQuestion() {
-            if (currentQuestionIndex >= QUESTION_POOL.length) {
-                endGame();
-                return;
-            }
-
-            const qData = QUESTION_POOL[currentQuestionIndex];
-            
-            // Set basic texts
-            document.getElementById('current-stage-num').innerText = (currentQuestionIndex + 1).toString().padStart(2, '0');
-            document.getElementById('question-category').innerText = qData.category;
-            document.getElementById('question-text').innerText = qData.question;
-            
-            // Update percentage bar
-            const progPct = ((currentQuestionIndex) / QUESTION_POOL.length) * 100;
-            document.getElementById('mission-progress-bar').style.width = `${progPct}%`;
-
-            // Reset current matching sequences
-            selectedOptionsSequence = [];
-            
-            // Create a shuffled index mapping so card order changes
-            // optionsMap holds indices like [0, 1, 2] randomly ordered, e.g. [2, 0, 1]
-            shuffledOptionsMapping = shuffleArray([0, 1, 2]);
-
-            // Draw option buttons
-            const optionsGrid = document.getElementById('options-grid');
-            optionsGrid.innerHTML = '';
-
-            for (let i = 0; i < 3; i++) {
-                const originalIndex = shuffledOptionsMapping[i];
-                const content = qData.steps[originalIndex];
+        const MainMenu = ({ setView }) => (
+            <div className="flex flex-col items-center justify-center min-h-screen bg-gradient-to-b from-indigo-900 via-purple-900 to-slate-900 p-6 text-white text-center">
+                <div className="animate-bounce mb-4">
+                    <Sparkles size={64} className="text-yellow-400 mx-auto" />
+                </div>
+                <h1 className="text-5xl md:text-7xl font-extrabold text-transparent bg-clip-text bg-gradient-to-r from-yellow-300 to-orange-500 drop-shadow-lg mb-4">
+                    สื่อมัลติมีเดียพัฒนาทักษะการอ่าน
+                </h1>
+                <p className="text-xl md:text-2xl text-blue-200 mb-12 max-w-2xl">
+                    AI Word Adventure - ผจญภัยไปกับเวทมนตร์แห่งภาษา กอบกู้ตัวอักษรจากปีศาจคำสับสน!
+                </p>
                 
-                // Card templates
-                optionsGrid.innerHTML += `
-                    <button onclick="manualSelect(${i + 1})" id="option-btn-${i}" class="card-pulse border border-rose-950/80 bg-slate-950/70 p-4 rounded-xl text-left hover:bg-rose-950/20 transition-all duration-200 cursor-pointer relative group flex flex-col justify-between min-h-[120px]">
-                        <div class="absolute top-2 right-2 bg-rose-950 text-rose-300 border border-rose-700 w-6 h-6 rounded-full flex items-center justify-center text-xs font-extrabold group-hover:bg-rose-600 group-hover:text-white group-hover:border-rose-400 transition-all duration-200">${i + 1}</div>
-                        <p class="text-[10px] text-rose-400 font-bold uppercase tracking-wider">ตัวเลือกที่ ${i + 1}</p>
-                        <p class="text-xs font-semibold text-rose-100 leading-relaxed">${content}</p>
+                <button 
+                    onClick={() => setView('map')}
+                    className="w-full max-w-sm py-4 px-6 bg-gradient-to-r from-green-400 to-emerald-600 rounded-2xl shadow-[0_8px_0_rgb(4,120,87)] hover:translate-y-1 hover:shadow-[0_4px_0_rgb(4,120,87)] active:translate-y-2 active:shadow-none transition-all flex items-center justify-center gap-3 text-2xl font-bold"
+                >
+                    <Play size={32} />
+                    เริ่มผจญภัย
+                </button>
+            </div>
+        );
+
+        const WorldMap = ({ setView, setCurrentWorld, worldScores, totalScore }) => (
+            <div className="min-h-screen bg-[#87CEEB] p-4 relative overflow-hidden flex flex-col">
+                <div className="absolute top-10 left-10 text-white opacity-50 text-6xl">☁️</div>
+                <div className="absolute top-20 right-20 text-white opacity-50 text-8xl">☁️</div>
+                <div className="absolute top-40 left-1/3 text-white opacity-50 text-5xl">☁️</div>
+
+                <div className="flex justify-between items-center mb-8 bg-white/30 backdrop-blur-md p-4 rounded-3xl shadow-lg relative z-10">
+                    <button onClick={() => setView('menu')} className="p-3 bg-white text-indigo-900 rounded-full shadow-md hover:bg-gray-100">
+                        <HomeIcon size={24} />
                     </button>
-                `;
-            }
-
-            // Reset timeline displays
-            resetTimelineUI();
-        }
-
-        function resetTimelineUI() {
-            const container = document.getElementById('timeline-container');
-            container.innerHTML = '';
-            for (let i = 0; i < 3; i++) {
-                container.innerHTML += `
-                    <div class="border border-dashed border-rose-900/40 bg-slate-900/30 p-3 rounded-xl min-h-[80px] flex flex-col items-center justify-center text-center transition-all duration-300" id="slot-${i}">
-                        <span class="text-[10px] text-rose-500 font-extrabold uppercase tracking-widest mb-1">ขั้นตอนที่ ${i + 1}</span>
-                        <span class="text-xs text-slate-500 font-medium italic select-none">ว่าง - รอเลือกตอบ</span>
+                    <div className="flex gap-4">
+                        <div className="flex items-center gap-2 bg-yellow-400 text-yellow-900 px-6 py-2 rounded-full font-black text-xl shadow-md">
+                            🏆 คะแนนรวมทั้งหมด: {totalScore}
+                        </div>
                     </div>
-                `;
-            }
-        }
+                </div>
 
-        function manualSelect(optionNum) {
-            // OptionNum is 1, 2, or 3
-            if (!gameActive || inputDebounceTimer) return;
-            sound.playClick();
-            processChoice(optionNum - 1);
-        }
+                <div className="flex-1 relative z-10 overflow-y-auto pb-20">
+                    <h2 className="text-4xl md:text-5xl font-black text-white text-center drop-shadow-[0_4px_4px_rgba(0,0,0,0.3)] mb-8">
+                        สื่อมัลติมีเดียพัฒนาทักษะการอ่าน
+                    </h2>
+                    <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-4 gap-6 max-w-6xl mx-auto">
+                        {WORLDS.map((world) => (
+                            <div 
+                                key={world.id}
+                                onClick={() => {
+                                    setCurrentWorld(world);
+                                    setView('game');
+                                }}
+                                className={`bg-gradient-to-br ${world.color} p-6 rounded-3xl shadow-xl transform transition hover:scale-105 cursor-pointer border-4 border-white/20 relative group`}
+                            >
+                                <div className="text-6xl text-center mb-4 group-hover:animate-bounce">{world.icon}</div>
+                                <h3 className="text-2xl font-bold text-white text-center mb-2 drop-shadow-md">{world.name}</h3>
+                                
+                                <div className="mt-4 bg-black/20 rounded-xl p-2 text-center text-yellow-300 font-bold flex items-center justify-center gap-2">
+                                    <Star size={18} /> คะแนน: {worldScores[world.id] || 0} / 100
+                                </div>
+                            </div>
+                        ))}
+                    </div>
 
-        // Main game logic handler
-        function processChoice(shuffledIndex) {
-            if (inputDebounceTimer) return;
+                    <div className="mt-12 flex justify-center pb-8">
+                        <button 
+                            onClick={() => setView('summary')}
+                            className="py-4 px-8 bg-gradient-to-r from-orange-400 to-red-500 text-white text-2xl md:text-3xl font-bold rounded-2xl shadow-[0_8px_0_rgb(153,27,27)] hover:translate-y-1 hover:shadow-[0_4px_0_rgb(153,27,27)] active:translate-y-2 active:shadow-none transition-all flex items-center justify-center gap-3 animate-pulse border-4 border-yellow-300"
+                        >
+                            🎉 ดูสรุปผลการเรียนรู้ 🏆
+                        </button>
+                    </div>
+                </div>
+            </div>
+        );
 
-            const qData = QUESTION_POOL[currentQuestionIndex];
-            const originalIndex = shuffledOptionsMapping[shuffledIndex]; // Converts card 1, 2, 3 to actual step 0, 1, 2
-            
-            // Expected next step in timeline is the count of already matched items
-            const expectedNextStep = selectedOptionsSequence.length; 
+        const GameEngine = ({ setView, world, updateScore }) => {
+            const [sessionWords, setSessionWords] = useState([]);
+            const [currentWordIndex, setCurrentWordIndex] = useState(0);
+            const [targetWord, setTargetWord] = useState("");
+            const [targetSyllables, setTargetSyllables] = useState([]);
+            const [availablePieces, setAvailablePieces] = useState([]);
+            const [selectedPieces, setSelectedPieces] = useState([]);
+            const [monsterHP, setMonsterHP] = useState(100);
+            const [gameState, setGameState] = useState('playing'); // playing, correct, wrong, won
+            const [aiFeedback, setAiFeedback] = useState("");
+            const [timeLeft, setTimeLeft] = useState(20);
+            const [correctAnswers, setCorrectAnswers] = useState(0);
 
-            // Find what actual step index we want.
-            // Under normal 0, 1, 2 orders, the expected step should match originalIndex
-            if (originalIndex === qData.order[expectedNextStep]) {
-                // Correct Match
-                totalCorrectTaps++;
-                selectedOptionsSequence.push(shuffledIndex);
+            useEffect(() => {
+                if (world && WORD_DATA[world.id]) {
+                    const wordsList = [...WORD_DATA[world.id]].sort(() => Math.random() - 0.5);
+                    const selected = wordsList.slice(0, 10); 
+                    setSessionWords(selected);
+                    setCorrectAnswers(0);
+                    loadWordData(selected[0], world.id);
+                    setAiFeedback(`ช่วยฉันประกอบคำใน ${world.name} ให้ถูกต้องนะ! มีเวลา 20 วินาที!`);
+                    setMonsterHP(100);
+                    setCurrentWordIndex(0);
+                }
+            }, [world]);
+
+            useEffect(() => {
+                if (gameState !== 'playing') return;
                 
-                // Highlight choice card as correct
-                const card = document.getElementById(`option-btn-${shuffledIndex}`);
-                if (card) {
-                    card.classList.remove('border-rose-950/80', 'bg-slate-950/70');
-                    card.classList.add('border-emerald-600', 'bg-emerald-950/50');
-                    card.disabled = true;
+                if (timeLeft <= 0) {
+                    handleTimeOut();
+                    return;
                 }
 
-                // Append successfully into timeline slot
-                const slot = document.getElementById(`slot-${expectedNextStep}`);
-                if (slot) {
-                    slot.classList.remove('border-dashed', 'border-rose-900/40', 'bg-slate-900/30');
-                    slot.classList.add('border-solid', 'border-rose-600', 'bg-rose-950/40', 'scale-105');
-                    setTimeout(() => slot.classList.remove('scale-105'), 300);
-                    slot.innerHTML = `
-                        <span class="text-[10px] text-rose-400 font-black uppercase tracking-widest mb-0.5"><i class="fa-solid fa-circle-check text-emerald-400"></i> ขั้นตอนที่ ${expectedNextStep + 1}</span>
-                        <span class="text-xs text-rose-100 font-bold">${qData.steps[originalIndex]}</span>
-                    `;
-                }
+                const timerId = setTimeout(() => {
+                    setTimeLeft(prev => prev - 1);
+                }, 1000);
 
-                sound.playHeartbeat();
+                return () => clearTimeout(timerId);
+            }, [timeLeft, gameState]);
 
-                // Check if all 3 timeline steps are completed
-                if (selectedOptionsSequence.length === 3) {
-                    handleTimelineCompletion();
-                }
-            } else {
-                // Incorrect choice
-                totalIncorrectTaps++;
-                gameCombo = 0;
-                updateComboUI();
+            const handleTimeOut = () => {
+                setGameState('wrong');
+                setAiFeedback(`หมดเวลา! คำเฉลยคือ "${targetWord}" ข้ามไปคำต่อไปนะ`);
+                speak(targetWord);
                 
-                // Subtract score securely
-                gameScore = Math.max(0, gameScore - 5);
-                document.getElementById('display-score').innerText = gameScore.toString().padStart(4, '0');
+                const nextIdx = currentWordIndex + 1;
+                setTimeout(() => {
+                    if (nextIdx < sessionWords.length) {
+                        setCurrentWordIndex(nextIdx);
+                        loadWordData(sessionWords[nextIdx], world.id);
+                        setAiFeedback("หมดเวลาแล้ว ลุยคำต่อไปเลย!");
+                    } else {
+                        setGameState('won');
+                        speak("จบการผจญภัยในด่านนี้แล้ว");
+                    }
+                }, 3000);
+            };
 
-                // Shake matching card and flash red style
-                const card = document.getElementById(`option-btn-${shuffledIndex}`);
-                if (card) {
-                    card.classList.add('shake-animation', 'border-rose-600', 'bg-rose-950/50');
-                    sound.playFail();
+            const loadWordData = (wordObj, worldId) => {
+                if(!wordObj) return;
+                const parts = [...wordObj.parts];
+                let distractors = [];
+                
+                const DISTRACTOR_POOLS = {
+                    1: ["รถ", "เรือ", "ฟ้า", "น้ำ", "ของ", "ลูก", "แม่", "ป่า", "ตา", "ใบ", "ใจ", "ลม", "แสง", "เมือง"],
+                    2: ["แ", "โ", "ะ", "อ", "ว", "ย", "ด", "บ", "ก", "น", "ง", "ม", "ย็", "ว็", "เ-ะ"],
+                    3: ["ก", "ป", "ข", "ค", "ต", "พ", "ล", "ร", "ว", "า", "ย", "ง", "น", "ม"],
+                    4: ["ม", "น", "ย", "ล", "ว", "ง", "ร", "อ", "ห", "า", "ี", "ู", "เ", "มอ", "นู", "ลาน"],
+                    5: ["เ", "แ", "โ", "ะ", "า", "ิ", "ี", "ด", "บ", "ก", "ม", "น", "ต", "ป", "ห"],
+                    6: ["คุน", "พาล", "หาณ", "นัด", "เลียน", "กะ", "ดาส", "จัด", "ญาณ", "โลง", "ดิล", "พะโร้", "ไช่"],
+                    7: ["พัน", "มัน", "คัน", "จรร", "สรร", "ธรรม", "กรรม", "วัน"],
+                    8: ["ทร์", "ธ์", "ย์", "ค์", "ณ์", "ต์", "ษ์", "ร์", "ม์", "พ์", "ตร", "ชร"]
+                };
+                
+                let pool = DISTRACTOR_POOLS[worldId] || ["กะ", "ติ", "มุ", "ปา", "เร", "โฮ", "โย"];
+
+                if (worldId === 7) {
+                    if (parts.includes('บรร')) distractors.push('บัน');
+                    else if (parts.includes('บัน')) distractors.push('บรร');
+                }
+                if (worldId === 3) {
+                    const hasCluster = parts.find(p => p.length === 2 && (p[1] === 'ร' || p[1] === 'ล' || p[1] === 'ว'));
+                    if (hasCluster) distractors.push(hasCluster[0]); 
+                }
+                if (worldId === 4 && parts.includes('ห')) {
+                    const followed = parts.find(p => p !== 'ห');
+                    if (followed && followed.length >= 2) distractors.push(followed[0]);
+                }
+
+                const targetTotalPieces = Math.max(5, parts.length + 2);
+                const maxDistractors = targetTotalPieces - parts.length;
+
+                let attempt = 0;
+                while(distractors.length < maxDistractors && attempt < 50) {
+                    const randPart = pool[Math.floor(Math.random() * pool.length)];
+                    if(!parts.includes(randPart) && !distractors.includes(randPart)) {
+                        distractors.push(randPart);
+                    }
+                    attempt++;
+                }
+                
+                const allPieces = [...parts, ...distractors].sort(() => Math.random() - 0.5);
+                setTargetWord(wordObj.word);
+                setTargetSyllables(parts);
+                setAvailablePieces(allPieces);
+                setSelectedPieces([]);
+                setTimeLeft(20);
+                setGameState('playing');
+            };
+
+            const handleSelectPiece = (piece, index) => {
+                if (gameState !== 'playing') return;
+                const newAvailable = [...availablePieces];
+                newAvailable.splice(index, 1);
+                setAvailablePieces(newAvailable);
+                setSelectedPieces([...selectedPieces, piece]);
+            };
+
+            const handleDeselectPiece = (piece, index) => {
+                if (gameState !== 'playing') return;
+                const newSelected = [...selectedPieces];
+                newSelected.splice(index, 1);
+                setSelectedPieces(newSelected);
+                setAvailablePieces([...availablePieces, piece]);
+            };
+
+            const checkAnswer = () => {
+                const currentWord = selectedPieces.join("");
+                const correctWord = targetSyllables.join("");
+                const nextIdx = currentWordIndex + 1;
+
+                if (currentWord === correctWord) {
+                    setGameState('correct');
+                    setAiFeedback("เก่งมาก! โจมตี!!");
+                    updateScore(world.id, 10); 
+                    setCorrectAnswers(prev => prev + 1);
+                    
+                    const damage = 100 / sessionWords.length;
+                    const newHP = Math.max(0, monsterHP - damage);
+                    
                     setTimeout(() => {
-                        card.classList.remove('shake-animation', 'border-rose-600', 'bg-rose-950/50');
-                    }, 400);
-                }
-            }
-        }
-
-        function handleTimelineCompletion() {
-            // Timeline is now full! Add big reward
-            inputDebounceTimer = true;
-            
-            gameCombo++;
-            updateComboUI();
-
-            const pointsAwarded = 10 * gameCombo;
-            gameScore += pointsAwarded;
-            document.getElementById('display-score').innerText = gameScore.toString().padStart(4, '0');
-
-            // Success SFX
-            sound.playSuccess();
-            triggerLevelSuccessVisuals();
-
-            // Run glowing sequence on timeline
-            for (let i = 0; i < 3; i++) {
-                const slot = document.getElementById(`slot-${i}`);
-                if (slot) {
-                    slot.classList.add('shadow-[0_0_20px_rgba(225,29,72,0.6)]', 'border-rose-500');
-                }
-            }
-
-            // Pause slightly to let student observe correct order, then load next question
-            setTimeout(() => {
-                currentQuestionIndex++;
-                inputDebounceTimer = false;
-                loadCurrentQuestion();
-            }, 2500);
-        }
-
-        // Key Press Fallback binds
-        window.addEventListener('keydown', (e) => {
-            if (!gameActive) return;
-            if (e.key === '1') manualSelect(1);
-            if (e.key === '2') manualSelect(2);
-            if (e.key === '3') manualSelect(3);
-        });
-    </script>
-
-    <script>
-        /* ==========================================
-           MediaPipe Hands Detection & Gesture Core
-           ========================================== */
-        const videoElement = document.getElementById('webcam-video');
-        const canvasElement = document.getElementById('webcam-canvas');
-        const canvasCtx = canvasElement.getContext('2d');
-        
-        let handsDetector = null;
-        let cameraStream = null;
-
-        function startARMediaPipe() {
-            handsDetector = new Hands({
-                locateFile: (file) => `https://cdn.jsdelivr.net/npm/@mediapipe/hands/${file}`
-            });
-
-            handsDetector.setOptions({
-                maxNumHands: 1,
-                modelComplexity: 1,
-                minDetectionConfidence: 0.6,
-                minTrackingConfidence: 0.6
-            });
-
-            handsDetector.onResults(onHandResults);
-
-            cameraStream = new Camera(videoElement, {
-                onFrame: async () => {
-                    if (isARActive) {
-                        await handsDetector.send({ image: videoElement });
-                    }
-                },
-                width: 640,
-                height: 480
-            });
-
-            cameraStream.start()
-                .then(() => {
-                    document.getElementById('camera-status').innerHTML = "กล้อง: เชื่อมต่อสำเร็จ";
-                    document.getElementById('camera-status').className = "bg-emerald-950 text-emerald-300 text-[10px] font-bold px-2 py-1 rounded tracking-wide border border-emerald-800";
-                })
-                .catch((err) => {
-                    console.error("Camera access failed: ", err);
-                    document.getElementById('camera-status').innerHTML = "กล้อง: ขัดข้อง (ใช้แบบคลิก)";
-                    document.getElementById('camera-status').className = "bg-amber-950 text-amber-300 text-[10px] font-bold px-2 py-1 rounded tracking-wide border border-amber-800";
-                    isARActive = false;
-                });
-        }
-
-        // Heuristics for Finger count counting
-        function getExtendedFingersCount(landmarks) {
-            // landmarks contains 21 normalized points
-            // Tip vs Base comparisons
-            let count = 0;
-
-            // Index Finger: tip(8) vs pip(6)
-            if (landmarks[8].y < landmarks[6].y) count++;
-            // Middle Finger: tip(12) vs pip(10)
-            if (landmarks[12].y < landmarks[10].y) count++;
-            // Ring Finger: tip(16) vs pip(14)
-            if (landmarks[16].y < landmarks[14].y) count++;
-            // Pinky Finger: tip(20) vs pip(18)
-            if (landmarks[20].y < landmarks[18].y) count++;
-
-            return count; // returns 0 to 4 fingers
-        }
-
-        function onHandResults(results) {
-            // Clear skeleton rendering layer
-            canvasCtx.save();
-            canvasCtx.clearRect(0, 0, canvasElement.width, canvasElement.height);
-            
-            if (results.multiHandLandmarks && results.multiHandLandmarks.length > 0) {
-                const landmarks = results.multiHandLandmarks[0];
-                
-                // Draw skeleton landmarks visual feedback
-                drawConnectors(canvasCtx, landmarks, HAND_CONNECTIONS, { color: '#e11d48', lineWidth: 3 });
-                drawLandmarks(canvasCtx, landmarks, { color: '#00f0ff', lineWidth: 1, radius: 4 });
-
-                // Detect fingers
-                const extendedCount = getExtendedFingersCount(landmarks);
-                
-                if (extendedCount >= 1 && extendedCount <= 3) {
-                    updateGestureProgress(extendedCount);
+                        setMonsterHP(newHP);
+                        if (nextIdx < sessionWords.length) {
+                            setCurrentWordIndex(nextIdx);
+                            loadWordData(sessionWords[nextIdx], world.id);
+                            setAiFeedback("เยี่ยมมาก! ลุยคำต่อไปเลย!");
+                        } else {
+                            setGameState('won');
+                            speak("จบการผจญภัยในด่านนี้แล้ว ยอดเยี่ยมไปเลย");
+                        }
+                    }, 1500);
                 } else {
-                    resetGestureProgress();
+                    setGameState('wrong');
+                    const isConfusedR = selectedPieces.includes("ล") || selectedPieces.includes("ละ") || selectedPieces.includes("ร");
+                    
+                    let feedbackMsg = `ยังไม่ถูกนะ คำเฉลยคือ "${targetWord}" ข้ามไปคำต่อไปเลย!`;
+                    if(isConfusedR) feedbackMsg = `ระวังเสียง ร หรือ ล นะ คำเฉลยคือ "${targetWord}" ข้ามไปคำต่อไป!`;
+                    
+                    setAiFeedback(feedbackMsg);
+                    speak(targetWord);
+
+                    setTimeout(() => {
+                        if (nextIdx < sessionWords.length) {
+                            setCurrentWordIndex(nextIdx);
+                            loadWordData(sessionWords[nextIdx], world.id);
+                            setAiFeedback("สู้ๆ ลุยคำต่อไปเลย!");
+                        } else {
+                            setGameState('won');
+                            speak("จบการผจญภัยในด่านนี้แล้ว");
+                        }
+                    }, 3000);
                 }
-            } else {
-                resetGestureProgress();
-            }
-            canvasCtx.restore();
+            };
+
+            if (!world) return null;
+
+            return (
+                <div className="min-h-screen bg-[url('https://images.unsplash.com/photo-1542273917363-3b1817f69a5d?q=80&w=2074&auto=format&fit=crop')] bg-cover bg-center relative flex flex-col">
+                    <div className={`absolute inset-0 bg-gradient-to-b ${world.color} opacity-85 backdrop-blur-sm z-0`}></div>
+                    
+                    <div className="flex justify-between items-center p-4 relative z-10">
+                        <button onClick={() => setView('map')} className="p-3 bg-white/20 hover:bg-white/40 text-white rounded-full backdrop-blur-md transition">
+                            <ArrowLeft size={24} />
+                        </button>
+                        <div className="text-white font-bold text-xl bg-black/40 px-6 py-2 rounded-full border border-white/20 flex items-center gap-2">
+                            <span>{world.icon}</span> ด่าน: {world.name} (คำที่ {currentWordIndex + 1}/{sessionWords.length})
+                        </div>
+                        <div className="w-12"></div>
+                    </div>
+
+                    <div className="flex-1 flex flex-col items-center justify-center p-6 relative z-10">
+                        {gameState !== 'won' && (
+                            <div className={`flex items-center justify-center gap-2 px-6 py-3 rounded-full font-black text-2xl shadow-lg border-4 transition-colors mb-6 
+                                ${timeLeft > 10 ? 'bg-white text-slate-800 border-slate-200' : 'bg-red-500 text-white border-red-700 animate-pulse'}`}>
+                                ⏱️ เวลา: {timeLeft} วิ
+                            </div>
+                        )}
+
+                        <div className="flex flex-col items-center mb-8 relative">
+                            <div className="w-48 bg-gray-800/80 rounded-full h-4 mb-4 border-2 border-white/30 overflow-hidden shadow-lg">
+                                <div 
+                                    className="bg-red-500 h-full transition-all duration-500 shadow-[inset_0_-2px_4px_rgba(0,0,0,0.4)]"
+                                    style={{ width: `${monsterHP}%` }}
+                                ></div>
+                            </div>
+                            <div className={`text-9xl filter drop-shadow-2xl transition-transform duration-300 ${gameState === 'correct' ? 'scale-125 opacity-50 rotate-12' : 'animate-pulse'} ${gameState === 'won' ? 'hidden' : ''}`}>
+                                👾
+                            </div>
+                            {gameState === 'won' && (
+                                <div className="text-8xl text-yellow-400 animate-bounce drop-shadow-[0_0_20px_rgba(250,204,21,0.8)]">
+                                    🏆✨
+                                </div>
+                            )}
+
+                            <div className="absolute -left-20 md:-left-40 top-10 bg-white p-4 rounded-2xl rounded-tr-none shadow-xl border-4 border-blue-400 max-w-[200px] animate-bounce z-20">
+                                <p className="text-blue-900 font-bold">{aiFeedback}</p>
+                                <button onClick={() => speak(targetWord)} className="mt-2 text-sm bg-blue-100 text-blue-700 px-3 py-1 rounded-full flex items-center gap-1 hover:bg-blue-200">
+                                    <Volume2 size={16}/> ฟังเสียง
+                                </button>
+                            </div>
+                            <div className="absolute -left-10 md:-left-24 top-24 text-6xl drop-shadow-lg">
+                                🧙‍♂️
+                            </div>
+                        </div>
+
+                        {gameState === 'won' && (
+                            <div className="bg-white p-8 rounded-3xl shadow-2xl text-center animate-scale-in border-8 border-yellow-400 max-w-md w-full z-20">
+                                <h2 className="text-3xl font-black text-orange-500 mb-4">จบด่าน {world.name}!</h2>
+                                
+                                <div className="flex flex-col justify-center items-center gap-2 mb-8 bg-orange-50 p-4 rounded-2xl border-2 border-orange-200">
+                                    <p className="text-lg font-bold text-slate-600">สรุปผลการผจญภัย</p>
+                                    <div className="text-xl font-bold text-indigo-700">
+                                        ตอบถูกทั้งหมด: {correctAnswers} / {sessionWords.length} ข้อ
+                                    </div>
+                                    <div className="bg-yellow-400 text-yellow-900 px-6 py-3 rounded-xl font-black flex items-center gap-2 text-2xl shadow-md mt-2">
+                                        <Star size={28} className="fill-current text-white" /> ได้รับคะแนน {correctAnswers * 10} แต้ม
+                                    </div>
+                                </div>
+
+                                <div className="flex flex-col gap-3">
+                                    <button 
+                                        onClick={() => setView('map')}
+                                        className="w-full py-4 bg-gradient-to-r from-green-400 to-emerald-600 text-white text-xl font-bold rounded-xl shadow-[0_6px_0_rgb(4,120,87)] hover:translate-y-1 hover:shadow-[0_2px_0_rgb(4,120,87)] active:translate-y-2 active:shadow-none transition-all"
+                                    >
+                                        เลือกดินแดนอื่นต่อ
+                                    </button>
+                                    <button 
+                                        onClick={() => setView('menu')}
+                                        className="w-full py-3 bg-slate-200 text-slate-700 text-lg font-bold rounded-xl shadow-[0_6px_0_rgb(148,163,184)] hover:translate-y-1 hover:shadow-[0_2px_0_rgb(148,163,184)] active:translate-y-2 active:shadow-none transition-all"
+                                    >
+                                        กลับหน้าแรกสุด
+                                    </button>
+                                </div>
+                            </div>
+                        )}
+
+                        {gameState !== 'won' && (
+                            <div className="w-full max-w-2xl bg-white/95 backdrop-blur-md p-6 rounded-3xl shadow-2xl border-4 border-indigo-200">
+                                <div className="min-h-[100px] bg-indigo-50 rounded-2xl border-4 border-dashed border-indigo-300 p-4 mb-6 flex flex-wrap gap-2 items-center justify-center transition-all duration-300">
+                                    {selectedPieces.length === 0 && <span className="text-gray-400 font-medium">กดเลือกพยางค์มาวางที่นี่</span>}
+                                    {selectedPieces.map((piece, idx) => (
+                                        <button 
+                                            key={`sel-${idx}`} 
+                                            onClick={() => handleDeselectPiece(piece, idx)}
+                                            className="px-6 py-4 bg-indigo-500 text-white text-2xl font-bold rounded-xl shadow-[0_4px_0_rgb(49,46,129)] hover:bg-indigo-600 transition-colors animate-pop-in"
+                                        >
+                                            {piece}
+                                        </button>
+                                    ))}
+                                </div>
+
+                                <div className="flex flex-wrap gap-3 justify-center mb-8">
+                                    {availablePieces.map((piece, idx) => (
+                                        <button 
+                                            key={`avail-${idx}`} 
+                                            onClick={() => handleSelectPiece(piece, idx)}
+                                            className="px-6 py-4 bg-white text-indigo-900 border-2 border-indigo-200 text-2xl font-bold rounded-xl shadow-[0_4px_0_rgb(199,210,254)] hover:bg-indigo-50 active:translate-y-1 active:shadow-none transition-all"
+                                        >
+                                            {piece}
+                                        </button>
+                                    ))}
+                                </div>
+
+                            <div className="flex justify-between items-center gap-4">
+                                <button onClick={() => speak(targetWord)} className="flex-1 py-4 bg-slate-200 text-slate-700 font-bold rounded-xl flex items-center justify-center gap-2 hover:bg-slate-300 transition-colors">
+                                    <Mic size={24} /> ฟังเสียงคำศัพท์
+                                </button>
+                                <button 
+                                    onClick={checkAnswer}
+                                        disabled={selectedPieces.length === 0}
+                                        className="flex-1 py-4 bg-gradient-to-r from-orange-400 to-red-500 text-white text-xl font-bold rounded-xl shadow-[0_6px_0_rgb(153,27,27)] hover:translate-y-1 hover:shadow-[0_2px_0_rgb(153,27,27)] disabled:opacity-50 disabled:cursor-not-allowed transition-all"
+                                    >
+                                        โจมตี! ⚔️
+                                    </button>
+                                </div>
+                            </div>
+                        )}
+                    </div>
+                </div>
+            );
+        };
+
+        const FinalSummary = ({ setView, worldScores, totalScore }) => (
+            <div className="min-h-screen bg-gradient-to-b from-yellow-300 via-orange-400 to-red-500 p-6 flex flex-col items-center justify-center relative overflow-hidden">
+                <div className="absolute top-10 left-10 text-6xl animate-bounce" style={{ animationDelay: '0.1s' }}>⭐</div>
+                <div className="absolute top-20 right-20 text-7xl animate-bounce" style={{ animationDelay: '0.3s' }}>🎉</div>
+                <div className="absolute bottom-20 left-[15%] text-5xl animate-bounce" style={{ animationDelay: '0.2s' }}>✨</div>
+                <div className="absolute bottom-10 right-[15%] text-6xl animate-bounce" style={{ animationDelay: '0.5s' }}>🏆</div>
+                <div className="absolute top-1/3 left-[5%] text-6xl animate-pulse">🎊</div>
+                <div className="absolute top-1/3 right-[5%] text-6xl animate-pulse">🎈</div>
+
+                <div className="bg-white/95 backdrop-blur-md p-8 md:p-12 rounded-3xl shadow-2xl border-8 border-yellow-200 text-center max-w-4xl w-full relative z-10 animate-scale-in">
+                    <h1 className="text-5xl md:text-7xl font-black text-transparent bg-clip-text bg-gradient-to-r from-orange-500 to-red-600 mb-4 drop-shadow-sm">
+                        ขอแสดงความยินดี!
+                    </h1>
+                    <p className="text-2xl md:text-3xl text-slate-700 font-bold mb-8">
+                        จบการผจญภัยใน "สื่อมัลติมีเดียพัฒนาทักษะการอ่าน" ยอดเยี่ยมมาก! 👏
+                    </p>
+
+                    <div className="bg-orange-50 rounded-3xl p-6 mb-8 border-4 border-orange-200 shadow-inner">
+                        <h2 className="text-3xl font-black text-orange-600 mb-6 bg-orange-200 inline-block px-6 py-2 rounded-full">
+                            สรุปคะแนนทั้ง 8 ดินแดน
+                        </h2>
+                        <div className="grid grid-cols-2 md:grid-cols-4 gap-4">
+                            {WORLDS.map(w => (
+                                <div key={w.id} className="bg-white p-4 rounded-xl shadow-md border-2 border-orange-100 flex flex-col items-center transform transition hover:scale-105">
+                                    <div className="text-4xl mb-2">{w.icon}</div>
+                                    <div className="font-bold text-sm text-slate-600 mb-1 text-center h-10 flex items-center justify-center">{w.name}</div>
+                                    <div className="text-2xl font-black text-green-600 bg-green-50 w-full py-1 rounded-lg">
+                                        {worldScores[w.id] || 0} แต้ม
+                                    </div>
+                                </div>
+                            ))}
+                        </div>
+                    </div>
+
+                    <div className="flex flex-col items-center mb-8">
+                        <span className="text-2xl text-slate-500 font-bold mb-3">คะแนนสะสมทั้งหมดที่ทำได้</span>
+                        <div className="bg-gradient-to-r from-yellow-400 to-yellow-500 text-yellow-900 px-12 py-6 rounded-full font-black text-6xl md:text-8xl shadow-[0_8px_0_rgb(180,83,9)] border-4 border-yellow-100 animate-pulse">
+                            {totalScore} <span className="text-3xl md:text-4xl">แต้ม</span>
+                        </div>
+                    </div>
+
+                    <div className="flex flex-col md:flex-row gap-4 justify-center items-center">
+                        <button 
+                            onClick={() => setView('map')}
+                            className="w-full md:w-auto py-4 px-10 bg-blue-500 text-white text-xl font-bold rounded-xl shadow-[0_6px_0_rgb(29,78,216)] hover:translate-y-1 hover:shadow-[0_2px_0_rgb(29,78,216)] active:translate-y-2 active:shadow-none transition-all flex justify-center items-center gap-2"
+                        >
+                            <ArrowLeft size={24} /> กลับไปเลือกดินแดนต่อ
+                        </button>
+                        <button 
+                            onClick={() => {
+                                window.location.reload(); 
+                            }}
+                            className="w-full md:w-auto py-4 px-10 bg-slate-200 text-slate-700 text-xl font-bold rounded-xl shadow-[0_6px_0_rgb(148,163,184)] hover:translate-y-1 hover:shadow-[0_2px_0_rgb(148,163,184)] active:translate-y-2 active:shadow-none transition-all flex justify-center items-center gap-2"
+                        >
+                            <HomeIcon size={24} /> หน้าแรกสุด (เริ่มใหม่)
+                        </button>
+                    </div>
+                </div>
+            </div>
+        );
+
+        const App = () => {
+            const [view, setView] = useState('menu');
+            const [currentWorld, setCurrentWorld] = useState(null);
+            const [worldScores, setWorldScores] = useState({
+                1: 0, 2: 0, 3: 0, 4: 0, 5: 0, 6: 0, 7: 0, 8: 0
+            });
+
+            const updateScore = (worldId, points) => {
+                setWorldScores(prev => ({
+                    ...prev,
+                    [worldId]: (prev[worldId] || 0) + points
+                }));
+            };
+
+            const totalScore = Object.values(worldScores).reduce((acc, score) => acc + score, 0);
+
+            return (
+                <div className="font-sans antialiased text-gray-900 bg-black min-h-screen">
+                    {view === 'menu' && <MainMenu setView={setView} />}
+                    {view === 'map' && (
+                        <WorldMap 
+                            setView={setView} 
+                            setCurrentWorld={setCurrentWorld} 
+                            worldScores={worldScores}
+                            totalScore={totalScore}
+                        />
+                    )}
+                    {view === 'game' && (
+                        <GameEngine 
+                            setView={setView} 
+                            world={currentWorld} 
+                            updateScore={updateScore}
+                        />
+                    )}
+                    {view === 'summary' && (
+                        <FinalSummary 
+                            setView={setView}
+                            worldScores={worldScores}
+                            totalScore={totalScore}
+                        />
+                    )}
+                </div>
+            );
         }
 
-        function updateGestureProgress(fingers) {
-            const circle = document.getElementById('gesture-hud-circle');
-            const hudCountText = document.getElementById('hud-finger-count');
-            const hudStatusText = document.getElementById('hud-status-text');
-
-            hudCountText.innerText = fingers;
-
-            if (fingers === lastGesture) {
-                gestureConfirmTimer += 4.5; // Increment hold timer speed
-                if (gestureConfirmTimer > 100) gestureConfirmTimer = 100;
-                
-                hudStatusText.innerText = `กำลังเลือก ข้อที่ ${fingers}... (${Math.round(gestureConfirmTimer)}%)`;
-
-                // Calculate dashoffset (stroke circle circumference is 125.6)
-                const dashOffset = 125.6 - (125.6 * gestureConfirmTimer) / 100;
-                circle.style.strokeDashoffset = dashOffset;
-
-                if (gestureConfirmTimer >= 100 && !inputDebounceTimer) {
-                    processChoice(fingers - 1);
-                    resetGestureProgress();
-                }
-            } else {
-                lastGesture = fingers;
-                gestureConfirmTimer = 0;
-            }
-        }
-
-        function resetGestureProgress() {
-            gestureConfirmTimer = 0;
-            lastGesture = -1;
-            const circle = document.getElementById('gesture-hud-circle');
-            const hudCountText = document.getElementById('hud-finger-count');
-            const hudStatusText = document.getElementById('hud-status-text');
-
-            if (circle) circle.style.strokeDashoffset = 125.6;
-            if (hudCountText) hudCountText.innerText = '0';
-            if (hudStatusText) hudStatusText.innerText = 'กรุณาชูมือหน้ากล้อง (1, 2, 3 นิ้ว)';
-        }
-    </script>
-
-    <script>
-        /* ==========================================
-           Gameplay Navigation Screens & Lifecycle Controllers
-           ========================================== */
-        
-        function startGameWithAR(useCamera) {
-            sound.init(); // Awake audio system context
-            document.getElementById('start-modal').classList.add('hidden');
-            
-            initGame();
-            initThreeJS();
-
-            gameActive = true;
-            isARActive = useCamera;
-
-            if (useCamera) {
-                startARMediaPipe();
-            } else {
-                document.getElementById('camera-status').innerHTML = "กล้อง: ไม่ใช้งาน (โหมดคลิก)";
-                document.getElementById('camera-status').className = "bg-slate-800 text-slate-300 text-[10px] font-bold px-2 py-1 rounded tracking-wide border border-rose-950";
-            }
-
-            loadCurrentQuestion();
-
-            // Run countdown interval
-            gameTimerInterval = setInterval(() => {
-                if (gameActive) {
-                    totalTimeLeft--;
-                    updateTimerDisplay();
-                    if (totalTimeLeft <= 0) {
-                        endGame();
-                    }
-                }
-            }, 1000);
-        }
-
-        function endGame() {
-            gameActive = false;
-            clearInterval(gameTimerInterval);
-
-            // Hide loading overlays, display final result overlay screen
-            const resultModal = document.getElementById('result-modal');
-            resultModal.classList.remove('hidden');
-
-            // Render calculations
-            document.getElementById('result-score').innerText = gameScore;
-            
-            const totalAttempts = totalCorrectTaps + totalIncorrectTaps;
-            const accuracy = totalAttempts > 0 ? Math.round((totalCorrectTaps / totalAttempts) * 100) : 0;
-            document.getElementById('result-accuracy').innerText = `${accuracy}%`;
-            document.getElementById('result-maxcombo').innerText = `X${maxCombo}`;
-
-            // Calculate formatted time taken
-            const timeTaken = 120 - totalTimeLeft;
-            const minutes = Math.floor(timeTaken / 60);
-            const seconds = timeTaken % 60;
-            document.getElementById('result-time').innerText = 
-                `${minutes.toString().padStart(2, '0')}:${seconds.toString().padStart(2, '0')}`;
-
-            // Assign biological understanding ranks based on performance criteria
-            let rank = "นักสำรวจร่างกายรุ่นเยาว์";
-            let badgeStyle = "bg-rose-950 text-rose-400 border-rose-700";
-            if (gameScore >= 200 && accuracy >= 80) {
-                rank = "ผู้เชี่ยวชาญระบบหายใจระดับสูง";
-                badgeStyle = "bg-amber-950 text-amber-300 border-amber-600";
-            } else if (gameScore >= 100) {
-                rank = "นักชีววิทยาร่างกายรุ่นเยาว์";
-                badgeStyle = "bg-sky-950 text-sky-400 border-sky-600";
-            }
-
-            const rankTitle = document.getElementById('result-rank-title');
-            rankTitle.innerText = rank;
-            
-            const badge = document.getElementById('result-rank-badge');
-            badge.className = `mt-3 inline-flex ${badgeStyle} text-xs px-4 py-1.5 rounded-full font-bold`;
-        }
-
-        function restartGame() {
-            // Reset modal frames and launch anew
-            document.getElementById('result-modal').classList.add('hidden');
-            initGame();
-            loadCurrentQuestion();
-            gameActive = true;
-            totalTimeLeft = 120;
-            
-            // Re-register interval safely
-            clearInterval(gameTimerInterval);
-            gameTimerInterval = setInterval(() => {
-                if (gameActive) {
-                    totalTimeLeft--;
-                    updateTimerDisplay();
-                    if (totalTimeLeft <= 0) {
-                        endGame();
-                    }
-                }
-            }, 1000);
-        }
-
-        function closeResultModal() {
-            document.getElementById('result-modal').classList.add('hidden');
-        }
+        const root = ReactDOM.createRoot(document.getElementById('root'));
+        root.render(<App />);
     </script>
 </body>
 </html>
